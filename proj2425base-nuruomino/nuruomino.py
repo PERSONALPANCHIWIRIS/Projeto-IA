@@ -77,6 +77,26 @@ class Board:
     
     def adjacent_positions(self, row:int, col:int) -> list:
         """Devolve as posições adjacentes à região, em todas as direções, incluindo diagonais."""
+        cell = self.cells[row][col]
+        if 0 > row >= self.rows or 0 > col >= self.columns:
+            return []
+        directions = [  
+            (-1, -1),  # cima esquerda
+            (-1,  0),  # cima
+            (-1,  1),  # cima direita
+            ( 0, -1),  # esquerda    
+            ( 0,  1),  # direita   
+            ( 1, -1),  # baixo esquerda  
+            ( 1,  0),  # baixo
+            ( 1,  1),   # baixo direita
+              
+        ]
+        Adjacents = []
+        for dir in directions:
+            r, c = cell.row + dir[0], cell.col + dir[1]
+            if 0 <= r < self.rows and 0 <= c < self.columns:
+                Adjacents.append((r, c))
+        return Adjacents
         #TODO
         pass
 
@@ -257,3 +277,4 @@ if __name__ == "__main__":
     print(str(board.find_first_region(0, 0, 3, None)))
     print(board.adjacent_regions(1))
     print(board.adjacent_values(1, 4))
+    print(board.adjacent_positions(3, 3))
