@@ -7,6 +7,60 @@
 # 00000 Nome2
 from sys import stdin
 from search import *
+import numpy as np
+
+PIECES = {
+    'L': [[0, 1],
+          [0, 1],
+          [1, 1]],
+
+    'T': [[1, 1, 1],
+          [0, 1, 0]],
+
+    'I': [[1, 1, 1, 1]],
+
+    'S': [[0, 1, 1],
+          [1, 1, 0]],
+}
+
+#Uma representação abstrata de uma peça
+class Piece:
+    def __init__(self, id):
+        self.id = id
+        self.shape = PIECES[id]
+        self.variations = self.generate_all_variations()
+
+
+    def rotate_90(self, shape, k):
+        piece_matrix = np.array(shape)
+        rotated = np.rot90(piece_matrix, k=k)
+        return rotated
+    
+    def reflect(self, shape):
+        piece_matrix = np.array(shape)
+        reflected = np.fliplr(piece_matrix)
+        return reflected
+    
+
+    def generate_all_variations(self):
+        variations = set()
+        current_shape = np.array(self.shape)
+        k = 1
+        for _ in range(4):
+            shape_tuple = tuple(map(tuple, current_shape))
+            variations.add(shape_tuple)
+            current_shape = self.rotate_90(current_shape, k)
+            k += 1
+
+        k = 1
+        current_shape = self.reflect(self.shape)
+        for _ in range(4):
+            shape_tuple = tuple(map(tuple, current_shape))
+            variations.add(shape_tuple)
+            current_shape = self.rotate_90(current_shape, k)
+            k += 1
+
+        return variations
 
 class NuruominoState:
     state_id = 0
@@ -229,6 +283,64 @@ class Board:
         #TODO
         pass    
 
+    #Verifica se é possível colocar uma peça no tabuleiro
+    #Pode ser usada, ou a inferior
+    def can_place_piece(self, piece, start_row, start_col):
+        for variation in piece.variations:
+            if self.can_place_specific(variation, start_row, start_col):
+                return True
+        return False
+    
+    #Experimenta todas as formas de colocar uma peça
+    def can_place_specific(self, variation, start_row, start_col):
+        region = self.cells[start_row][start_col].region
+        for i, part in enumerate(variation):
+            for j, value in enumerate(part):
+                if value == 1: #Só vasmos considerar os lugares a ser ocupados
+                    row = start_row + i
+                    col = start_col + j
+                    #print("row: " + str(row) + " col: " + str(col))
+                    if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
+                        #print("fora do tabuleiro")
+                        return False #fora do tabuleiro
+                    cell = self.cells[row][col]
+                    #print("Defined:" + str(region))
+                    #print("Cell:" + str(cell.region))
+                    if cell.piece is not None or cell.region != region:
+                        #print("ja ocupada ou diferente")
+                        return False #celula já ocipada
+        #print("CAN PLACE\n")
+        return True
+                    
+    def place_piece(self, piece, start_row, start_col):
+        for variation in piece.variations:
+            #print("PRE CAN PLACE\n")
+            if self.can_place_specific(variation, start_row, start_col):
+                #print("POST CAN PLACE\n")
+                self.place_specific(variation, start_row, start_col, piece.id)
+                #print("POST PLACE\n")
+                return True
+            
+    def place_specific(self, variation, start_row, start_col, piece_value):
+        for i, part in enumerate(variation):
+            for j, value in enumerate(part):
+                if value == 1:
+                    row = start_row + i
+                    col = start_col + j
+                    self.cells[row][col].piece = piece_value
+                    #print("VALUE:" + str(value) + "\n")
+
+    #sem definir uma coordena, senão definindo uma região
+    def try_place_piece_in_region(self, piece, region):
+        region_cells = self.region_cells(region)  # Get all cells in the region
+        for cell in region_cells:
+            start_row, start_col = cell.row, cell.col
+            if self.can_place_piece(piece, start_row, start_col):
+                # print("PODE PODE PODE\n")
+                return True  # The piece can be placed at this position        
+        # print("NÃO PODE PODE PODE\n")
+        return False  # The piece cannot be placed anywhere in the region
+
     # TODO: outros metodos da classe Board
 
 class Nuruomino(Problem):
@@ -278,3 +390,28 @@ if __name__ == "__main__":
     print(board.adjacent_regions(1))
     print(board.adjacent_values(1, 4))
     print(board.adjacent_positions(3, 3))
+    print("Vem as peças:\n")
+    L_piece = Piece('L')
+    S_piece = Piece('S')
+    T_piece = Piece('T')
+    I_piece = Piece('I')
+    print(L_piece.id)
+    print(L_piece.variations)
+    print(S_piece.id)
+    print(S_piece.variations)
+    print(T_piece.id)
+    print(T_piece.variations)
+    print(I_piece.id)
+    print(I_piece.variations)
+    #Tentar colocar L na região 1
+    board.place_piece(L_piece, 0, 0)
+    print("Depois de colocar L na região 1\n")
+    board._show_board_()
+    board.place_piece(I_piece, 2, 5)
+    print("Depois de colocar I na região 5\n")
+    board._show_board_()
+    print("tentar colocar I na região 2\n")
+    board.place_piece(I_piece, 0, 2)
+    board._show_board_()
+    board.try_place_piece_in_region(I_piece, 2)
+    board.try_place_piece_in_region(T_piece, 2)
