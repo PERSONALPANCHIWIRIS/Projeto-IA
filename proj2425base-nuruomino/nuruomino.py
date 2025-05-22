@@ -11,16 +11,16 @@ import numpy as np
 
 PIECES = {
     'L': [[0, 1],
-          [0, 1],
+          ['X', 1],
           [1, 1]],
 
     'T': [[1, 1, 1],
-          [0, 1, 0]],
+          ['X', 1, 'X']],
 
-    'I': [[1, 1, 1, 1]],
+    'I': [['1', '1', '1', '1']],
 
-    'S': [[0, 1, 1],
-          [1, 1, 0]],
+    'S': [['X', 1, 1],
+          [1, 1, 'X']],
 }
 
 #Uma representação abstrata de uma peça
@@ -131,7 +131,7 @@ class Board:
     
     def adjacent_positions(self, row:int, col:int) -> list:
         """Devolve as posições adjacentes à região, em todas as direções, incluindo diagonais."""
-        cell = self.cells[row][col]
+        #cell = self.cells[row][col]
         if 0 > row >= self.rows or 0 > col >= self.columns:
             return []
         directions = [  
@@ -146,10 +146,18 @@ class Board:
               
         ]
         Adjacents = []
-        for dir in directions:
-            r, c = cell.row + dir[0], cell.col + dir[1]
-            if 0 <= r < self.rows and 0 <= c < self.columns:
-                Adjacents.append((r, c))
+        # for dir in directions:
+        #     r, c = cell.row + dir[0], cell.col + dir[1]
+        #     if 0 <= r < self.rows and 0 <= c < self.columns:
+        #         Adjacents.append((r, c))
+        # return Adjacents
+        region = self.get_region(row, col)
+        region_cells = self.region_cells(region)
+        for cell in region_cells:
+            for r, c in directions:
+                r, c = cell.row + r, cell.col + c
+                if 0 <= r < self.rows and 0 <= c < self.columns and self.cells[r][c].region != cell.region and (r, c) not in Adjacents:
+                    Adjacents.append((r, c))
         return Adjacents
         #TODO
         pass
@@ -159,26 +167,38 @@ class Board:
         if 0 < row >= self.rows or 0 < col >= self.columns:
             return []
         
-        directions = [  
-            (-1, -1),  # cima esquerda
-            (-1,  0),  # cima
-            (-1,  1),  # cima direita
-            ( 0, -1),  # esquerda    
-            ( 0,  1),  # direita   
-            ( 1, -1),  # baixo esquerda  
-            ( 1,  0),  # baixo
-            ( 1,  1),   # baixo direita
+        # directions = [  
+        #     (-1, -1),  # cima esquerda
+        #     (-1,  0),  # cima
+        #     (-1,  1),  # cima direita
+        #     ( 0, -1),  # esquerda    
+        #     ( 0,  1),  # direita   
+        #     ( 1, -1),  # baixo esquerda  
+        #     ( 1,  0),  # baixo
+        #     ( 1,  1),   # baixo direita
               
-        ]
-        cell = self.cells[row][col]
-        neighbours = []
-        for r, c in directions:
-            r, c = cell.row + r, cell.col + c
-            if 0 <= r < self.rows and 0 <= c < self.columns:
-                neighbours.append(self.cells[r][c].value())
+        # ]
+        #cell = self.cells[row][col]
+        # region = self.get_region(row, col)
+        # region_cells = self.region_cells(region)
+        # neighbours = []
+        # for cell in region_cells:
+        #     for r, c in directions:
+        #         r, c = cell.row + r, cell.col + c
+        #         if 0 <= r < self.rows and 0 <= c < self.columns and self.cells[r][c].region != region:
+        #             #Não sei se queremos só os valores para verificação, ou literalmente cada valor de cada cela adjacente à região
+        #             if self.cells[r][c].value() not in neighbours:
+        #                 neighbours.append(self.cells[r][c].value())
+        # return neighbours
 
-        return neighbours
+        adjacent_positions = self.adjacent_positions(row, col)
+        neighbours = []
+        for r, c in adjacent_positions:
+            value = self.cells[r][c].value()
+            if value != 'X' not in neighbours:
+                neighbours.append(value)
             
+        return neighbours
         #TODO
         pass
     
@@ -191,12 +211,14 @@ class Board:
 
         if row == None or column == None:
             (row, column) = self.find_first_region(0, 0, region, None)
+            #Na mesma não encontramos
             if row == None or column == None:
                 return []
             
         if (row, column) in visited or row < 0 or row >= self.rows  or column < 0 or column >= self.columns:
             return []
 
+        #Evitar visitas/calculos duplicados para certas celas
         visited.add((row, column))
 
         if self.cells[row][column].region == region:
@@ -211,11 +233,11 @@ class Board:
 
     #Como o nome indica
     def get_value(self, row, column):
-        print(str(self.cells[row][column].value()))
+        return self.cells[row][column].value()
 
     #NOSSA
     def get_region(self, row, column):
-        print(str(self.cells[row][column].region))
+        return self.cells[row][column].region
     
     #Podemos começar com row e column a (0,0)
     #NOSSA
@@ -223,7 +245,7 @@ class Board:
         if visited is None:
             visited = set()
 
-        if (row, column) in visited or row < 0 or row > self.rows  or column < 0 or column > self.columns:
+        if (row, column) in visited or row < 0 or row >= self.rows  or column < 0 or column >= self.columns:
             return None
 
         visited.add((row, column))
@@ -294,23 +316,44 @@ class Board:
     #Experimenta todas as formas de colocar uma peça
     def can_place_specific(self, variation, start_row, start_col, piece_value):
         region = self.cells[start_row][start_col].region
+        adjacent_values = self.adjacent_values(start_row, start_col)
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
-                if value == 1: #Só vasmos considerar os lugares a ser ocupados
-                    row = start_row + i
-                    col = start_col + j
+                row = start_row + i
+                col = start_col + j
+
+                if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
+                    #print("fora do tabuleiro")
+                    return False #fora do tabuleiro
+
+                cell = self.cells[row][col]
+                if value == '1': #Só vasmos considerar os lugares a ser ocupados
+                    # row = start_row + i
+                    # col = start_col + j
                     #print("row: " + str(row) + " col: " + str(col))
-                    if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
-                        #print("fora do tabuleiro")
-                        return False #fora do tabuleiro
-                    cell = self.cells[row][col]
-                    adjacent_values = self.adjacent_values(row, col)
+                    # if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
+                    #     #print("fora do tabuleiro")
+                    #     return False #fora do tabuleiro
+                    # cell = self.cells[row][col]
+                    #adjacent_values = self.adjacent_values(row, col)
+                    # print((row, col))
+                    # print(piece_value)
+                    # print(adjacent_values)
                     #print("Defined:" + str(region))
                     #print("Cell:" + str(cell.region))
-                    if cell.piece is not None or cell.region != region or piece_value in adjacent_values:
+                    #if value == 1:
+                    if cell.piece is not None or cell.region != region or piece_value in adjacent_values or cell.piece == 'X':
                         #print("ja ocupada ou diferente, ou ao lado temos uma igual")
                         return False #celula já ocipada
+                    # elif value == 'X':
+                    #     if cell.piece is not None:
+                    #         return False
+                
+                elif value == 'X':
+                    if cell.piece is not None:
+                        return False
                     
+        #print(variation)
         #print("CAN PLACE\n")
         return True
                     
@@ -326,11 +369,15 @@ class Board:
     def place_specific(self, variation, start_row, start_col, piece_value):
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
-                if value == 1:
+                if value == '1' or value == 'X': #Aqui o X determina lugares que não podem ser ocupados (criariamos uma peça 2x2)
                     row = start_row + i
                     col = start_col + j
-                    self.cells[row][col].piece = piece_value
-                    #print("VALUE:" + str(value) + "\n")
+                    if value == '1': #Parece que se temos carateres e inteiros num array, o numpy transforma tudo a carater
+                        self.cells[row][col].piece = piece_value
+                    elif value == 'X':
+                        self.cells[row][col].piece = 'X'
+                        self.cells[row][col].region = None #Esta cela deixa de ser considerada para calculos posteriores
+                    #print("VALUE:" + str(piece_value) + "\n")
 
     #sem definir uma coordena, senão definindo uma região
     def try_place_piece_in_region(self, piece, region):
@@ -338,9 +385,9 @@ class Board:
         for cell in region_cells:
             start_row, start_col = cell.row, cell.col
             if self.can_place_piece(piece, start_row, start_col):
-                # print("PODE PODE PODE\n")
+                print("PODE PODE PODE\n")
                 return True  # The piece can be placed at this position        
-        # print("NÃO PODE PODE PODE\n")
+        print("NÃO PODE PODE PODE\n")
         return False  # The piece cannot be placed anywhere in the region
 
     # TODO: outros metodos da classe Board
@@ -385,13 +432,42 @@ class Nuruomino(Problem):
 if __name__ == "__main__":
     board = Board.parse_instance()
     board._show_board_()
+
+    print("Values de coordenadas especificas\n")
     board.get_value(0, 0)
     board.get_value(2,2)
+
+    print("Região de uma coordenada especifica\n")
+    board.get_region(1, 1)
+    board.get_region(3, 4)
+
+    print("Find first in region\n")
     print(str(board.find_first_region(0, 0, 1, None)))
     print(str(board.find_first_region(0, 0, 3, None)))
+
+    print("Todas as cellas de uma região\n")
+    cells_1 = board.region_cells(1)
+    print("Região 1\n")
+    for cell in cells_1:
+        print(f"({cell.row}, {cell.col})")
+    cells_2 = board.region_cells(2)
+    print("Região 2\n")
+    for cell in cells_2:
+        print(f"({cell.row}, {cell.col})")
+
+    print("regiões adjacentes a uma especifica\n")
     print(board.adjacent_regions(1))
+    print(board.adjacent_regions(3))
+    print(board.adjacent_regions(5))
+
+    print("Valores adjacentes a uma região\n")
     print(board.adjacent_values(1, 4))
+    print(board.adjacent_values(5,5))
+
+    print("Coordenadas adjacentes a uma região\n")
     print(board.adjacent_positions(3, 3))
+    print(board.adjacent_positions(0, 0))
+
     print("Vem as peças:\n")
     L_piece = Piece('L')
     S_piece = Piece('S')
@@ -405,15 +481,31 @@ if __name__ == "__main__":
     print(T_piece.variations)
     print(I_piece.id)
     print(I_piece.variations)
+
     #Tentar colocar L na região 1
+    print("Tentar colocar L na região 1\n")
     board.place_piece(L_piece, 0, 0)
+
     print("Depois de colocar L na região 1\n")
     board._show_board_()
+
+    print("Região 2 deve ter menos uma cela\n")
+    cells_2 = board.region_cells(2)
+    print("Região 2\n")
+    for cell in cells_2:
+        print(f"({cell.row}, {cell.col})")
+
+    print(board.get_value(1, 1))
+
+    print("Tenta colocar I na região 5\n")
     board.place_piece(I_piece, 2, 5)
     print("Depois de colocar I na região 5\n")
     board._show_board_()
+
     print("tentar colocar I na região 2\n")
     board.place_piece(I_piece, 0, 2)
     board._show_board_()
+
+    print("Indica se pode ao não colocar\n")
     board.try_place_piece_in_region(I_piece, 2)
     board.try_place_piece_in_region(T_piece, 2)
