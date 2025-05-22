@@ -287,12 +287,12 @@ class Board:
     #Pode ser usada, ou a inferior
     def can_place_piece(self, piece, start_row, start_col):
         for variation in piece.variations:
-            if self.can_place_specific(variation, start_row, start_col):
+            if self.can_place_specific(variation, start_row, start_col, piece.id):
                 return True
         return False
     
     #Experimenta todas as formas de colocar uma peça
-    def can_place_specific(self, variation, start_row, start_col):
+    def can_place_specific(self, variation, start_row, start_col, piece_value):
         region = self.cells[start_row][start_col].region
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
@@ -304,18 +304,20 @@ class Board:
                         #print("fora do tabuleiro")
                         return False #fora do tabuleiro
                     cell = self.cells[row][col]
+                    adjacent_values = self.adjacent_values(row, col)
                     #print("Defined:" + str(region))
                     #print("Cell:" + str(cell.region))
-                    if cell.piece is not None or cell.region != region:
-                        #print("ja ocupada ou diferente")
+                    if cell.piece is not None or cell.region != region or piece_value in adjacent_values:
+                        #print("ja ocupada ou diferente, ou ao lado temos uma igual")
                         return False #celula já ocipada
+                    
         #print("CAN PLACE\n")
         return True
                     
     def place_piece(self, piece, start_row, start_col):
         for variation in piece.variations:
             #print("PRE CAN PLACE\n")
-            if self.can_place_specific(variation, start_row, start_col):
+            if self.can_place_specific(variation, start_row, start_col, piece.id):
                 #print("POST CAN PLACE\n")
                 self.place_specific(variation, start_row, start_col, piece.id)
                 #print("POST PLACE\n")
