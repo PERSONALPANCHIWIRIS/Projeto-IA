@@ -385,9 +385,9 @@ class Board:
         for cell in region_cells:
             start_row, start_col = cell.row, cell.col
             if self.can_place_piece(piece, start_row, start_col):
-                print("PODE PODE PODE\n")
+                #print("PODE PODE PODE\n")
                 return True  # The piece can be placed at this position        
-        print("NÃO PODE PODE PODE\n")
+        #print("NÃO PODE PODE PODE\n")
         return False  # The piece cannot be placed anywhere in the region
 
     # TODO: outros metodos da classe Board
