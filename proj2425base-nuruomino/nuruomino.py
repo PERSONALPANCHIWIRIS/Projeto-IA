@@ -381,16 +381,21 @@ class Board:
 
     #sem definir uma coordena, senão definindo uma região
     def try_place_piece_in_region(self, piece, region):
-        region_cells = self.region_cells(region)  # Get all cells in the region
+        region_cells = self.region_cells(region)
         for cell in region_cells:
             start_row, start_col = cell.row, cell.col
             if self.can_place_piece(piece, start_row, start_col):
                 #print("PODE PODE PODE\n")
-                return True  # The piece can be placed at this position        
+                return True         
         #print("NÃO PODE PODE PODE\n")
-        return False  # The piece cannot be placed anywhere in the region
+        return False  
 
     # TODO: outros metodos da classe Board
+
+    def all_possibilities(self, region):
+        #Devolve todas as peças possíveis por colocar, em todas as suas variações
+        #POR IMPLEMENTAR
+        pass
 
 class Nuruomino(Problem):
     def __init__(self, board: Board):
