@@ -2,9 +2,9 @@
 # Devem alterar as classes e funções neste ficheiro de acordo com as instruções do enunciado.
 # Além das funções e classes sugeridas, podem acrescentar outras que considerem pertinentes.
 
-# Grupo 00:
-# 00000 Nome1
-# 00000 Nome2
+# Grupo 73:
+# 109625 Francisco Pestana
+# 105953 Gonçalo Simplício
 from sys import stdin
 from search import *
 import numpy as np
@@ -91,14 +91,14 @@ class Cell:
     def value(self):
         return self.piece if self.piece != None else self.region
 
-
-
 class Board:
     """Representação interna de um tabuleiro do Puzzle Nuruomino."""
     def __init__(self, cells):
         self.cells = cells
         self.rows = len(cells)
         self.columns = len(cells)
+        #Uma forma de guardar os dados das regiões. EXPERIMENTAR
+        self.region_values = {}
 
     def adjacent_regions(self, region:int) -> list:
         """Devolve uma lista das regiões que fazem fronteira com a região enviada no argumento."""
@@ -233,11 +233,25 @@ class Board:
 
     #Como o nome indica
     def get_value(self, row, column):
+        if row < 0 or row >= self.rows or column < 0 or column >= self.columns:
+            return None
         return self.cells[row][column].value()
 
     #NOSSA
     def get_region(self, row, column):
         return self.cells[row][column].region
+    
+    #NOSSA
+    def number_of_regions(board):
+        regions = set()
+        for column in board.cells:
+            for cell in column:
+                regions.add(cell.region)
+        return len(regions)
+    
+    #Nossa
+    def region_size(self,region):
+        return len(self.region_cells(region))
     
     #Podemos começar com row e column a (0,0)
     #NOSSA
@@ -304,14 +318,14 @@ class Board:
 
         #TODO
         pass    
-
     #Verifica se é possível colocar uma peça no tabuleiro
     #Pode ser usada, ou a inferior
+    #ESTA RETORNA A VARIAÇÃO QUE PODE SER COLOCADA
     def can_place_piece(self, piece, start_row, start_col):
         for variation in piece.variations:
-            if self.can_place_specific(variation, start_row, start_col, piece.id):
-                return True
-        return False
+            if self.can_place_specific(variation, start_row, start_col, piece.id) and not self.verify_2x2(start_row,start_col):
+                return variation
+        return None
     
     #Experimenta todas as formas de colocar uma peça
     def can_place_specific(self, variation, start_row, start_col, piece_value):
@@ -367,6 +381,10 @@ class Board:
                 return True
             
     def place_specific(self, variation, start_row, start_col, piece_value):
+        #TESTAR
+        cell_region = self.cells[start_row][start_col].region
+        self.region_values[cell_region] = piece_value #Atualiza o valor da região
+        #TESTAR
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
                 if value == '1' or value == 'X': #Aqui o X determina lugares que não podem ser ocupados (criariamos uma peça 2x2)
@@ -379,12 +397,25 @@ class Board:
                         self.cells[row][col].region = None #Esta cela deixa de ser considerada para calculos posteriores
                     #print("VALUE:" + str(piece_value) + "\n")
 
+    #Para as regiões de dimensão 4
+    def place_piece_dimension_4(self, region):
+        pieces = [Piece('L'), Piece('I'), Piece('T'), Piece('S')]
+        region_cells = self.region_cells(region)
+        for cell in region_cells: #Tecnicamente isto devia ser só uma iteração
+            row, col = cell.row, cell.col
+            for piece in pieces:
+                variation = self.can_place_piece(piece, row, col)
+                if variation is not None:
+                    self.place_specific(variation, row, col, piece.id)
+                    return True
+
+
     #sem definir uma coordena, senão definindo uma região
     def try_place_piece_in_region(self, piece, region):
         region_cells = self.region_cells(region)
         for cell in region_cells:
             start_row, start_col = cell.row, cell.col
-            if self.can_place_piece(piece, start_row, start_col):
+            if self.can_place_piece(piece, start_row, start_col) != None:
                 #print("PODE PODE PODE\n")
                 return True         
         #print("NÃO PODE PODE PODE\n")
@@ -394,19 +425,92 @@ class Board:
 
     def all_possibilities(self, region):
         #Devolve todas as peças possíveis por colocar, em todas as suas variações
-        #POR IMPLEMENTAR
-        pass
+        pieces = [Piece(piece_id) for piece_id in ['L', 'I', 'T', 'S']]
+        possible = []
+        region_cells = self.region_cells(region)
+        for cell in region_cells:
+            start_row, start_col = cell.row, cell.col
+            for piece in pieces:
+                variation = self.can_place_piece(piece, start_row, start_col)
+                if variation is not None:
+                    possible.append((piece.id, variation, (start_row, start_col)))
+        return possible
+        
+    #NOSSA
+    #Devolve um dicionário com as regiões e os valores da peça na região
+    #TEMPORARIA; EXPERIMENTAR OUTRAS FORMAS
+    def value_regions(self):
+        region_values = {}
+        region_num = self.number_of_regions()
+        for region in range(region_num - 1):
+            #print("REGIÃO: " + str(region + 1))
+            piece_found = None
+            regions_cells = self.region_cells(region + 1) 
+            for cell in regions_cells:
+                if cell.piece is not None:
+                    piece_found = cell.piece
+                    #region_values[cell.region] = cell.piece if cell.piece
+                    break
+            region_values[region + 1] = piece_found if piece_found != None else 0
+        return region_values
+    
+    
+    #Verifica se existe uma peça 2x2 criada por uma cela especificada
+    #True: Existe uma 2x2
+    #False: Não Existe uma 2x2
+    def verify_2x2(self, row, col):
+        piece_values = ['L', 'I', 'T', 'S']
+        
+        squares = [
+        #canto superior esquerdo
+        [self.get_value(row, col), self.get_value(row, col + 1),
+         self.get_value(row + 1, col), self.get_value(row + 1, col + 1)],  
+
+        #Superior direito
+        [self.get_value(row, col), self.get_value(row, col - 1),
+         self.get_value(row + 1, col), self.get_value(row + 1, col - 1)],  
+
+        #Inferior esquerdo
+        [self.get_value(row, col), self.get_value(row, col + 1),
+         self.get_value(row - 1, col), self.get_value(row - 1, col + 1)],  
+         
+        #Inferior direito
+        [self.get_value(row, col), self.get_value(row, col - 1),
+         self.get_value(row - 1, col), self.get_value(row - 1, col - 1)]   
+        ]
+
+        for square in squares:
+            count = 0
+            for value in square:
+                if value in piece_values:
+                    count += 1
+            if count == 4:
+                return True #Existe uma peça 2x2
+            
+        return False #Não existe uma peça 2x2
 
 class Nuruomino(Problem):
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
         self.board = board
+        #self.regions = board.number_of_regions()
+        #self.regions = np.zeros(board.number_of_regions(), dtype=object)
+        self.regions = board.value_regions()
         #TODO
         pass 
 
     def actions(self, state: NuruominoState):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
+        actions = list()
+        for region in self.regions.items() == 0:
+            actions.append(self.board.all_possibilities(region))
+            # pieces = [Piece(piece_id) for piece_id in ['L','T','I','S']]
+            # for piece in pieces:
+            #     value = self.board.try_place_piece_in_region(piece,region)
+            #     if value:
+            #         actions.append([region,piece.id,piece.shape])
+        return actions
         #TODO
         pass 
 
@@ -415,7 +519,11 @@ class Nuruomino(Problem):
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
-
+        if action in self.actions(state):
+            self.board.place_piece(action.piece)
+            self.regions[action[0]] = action[1]
+            state.board = self.board
+            return state
         #TODO
         pass 
         
@@ -424,11 +532,37 @@ class Nuruomino(Problem):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
+        if len(self.regions) != self.board.number_of_regions():
+            return False
+        
+        #Isto aqui é usando as funções do tabuleiro
+        for region in self.regions.keys():
+            row, col = self.board.find_first_region(0, 0, region, None)
+            adjacent_values = self.board.adjacent_values(row, col)
+            if self.regions[region] == 0 or self.regions[region] in adjacent_values:
+                return False
+        return True
+
+        #aqui seria usando o numpy array
+        # for region in range(1, len(self.regions)):
+        #     if self.regions[region - 1] == 0:
+        #         return False
+        #     adjacents = self.board.adjacent_regions(region)
+        #     for adj in adjacents:
+        #         if self.regions[region - 1] == self.regions[adj - 1]:
+        #             return False
+        # return True
         #TODO
         pass 
 
     def h(self, node: Node):
         """Função heuristica utilizada para a procura A*."""
+        # placed =0 
+        # for region in len(self.regions):
+        #     if self.regions[region] == 0:
+        #         placed+1
+        len(self.regions) - count(self.regions ==0)
+        node.action.
         # TODO
         pass
 
@@ -514,3 +648,16 @@ if __name__ == "__main__":
     print("Indica se pode ao não colocar\n")
     board.try_place_piece_in_region(I_piece, 2)
     board.try_place_piece_in_region(T_piece, 2)
+
+
+
+    # board = Board.parse_instance()
+    # board._show_board_()
+    # problem = Nuruomino(board)
+    # for region in problem.regions.keys:
+    #     if board.region_size(region) == 4:
+    #         problem.board.place_piece_dimension_4(region)
+    # problem.regions = problem.board.value_regions()
+    # node= depth_first_tree_search(problem)
+    # if problem.goal_test(node):
+    #     problem.board._show_board_()
