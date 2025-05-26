@@ -313,11 +313,13 @@ class Board:
         #print("\n")
         for row in range(self.rows):
             for column in range(self.columns):
-                print(str(self.cells[row][column].value()) + " ", end="")
-            print("\t")
+                #print(str(self.cells[row][column].value()) + " ", end="")
+                print(str(self.cells[row][column].value()) + "\t", end="")
+            #print("\t")
+            print("\n")
 
         #TODO
-        pass    
+        #pass    
     #Verifica se é possível colocar uma peça no tabuleiro
     #Pode ser usada, ou a inferior
     #ESTA RETORNA A VARIAÇÃO QUE PODE SER COLOCADA
@@ -358,6 +360,7 @@ class Board:
                     #if value == 1:
                     if cell.piece is not None or cell.region != region or piece_value in adjacent_values or cell.piece == 'X':
                         #print("ja ocupada ou diferente, ou ao lado temos uma igual")
+                        #print("DIMELO CHINO")
                         return False #celula já ocipada
                     # elif value == 'X':
                     #     if cell.piece is not None:
@@ -500,38 +503,60 @@ class Nuruomino(Problem):
         #self.regions = initialState.board.value_regions()
         self.regions = board.value_regions()
         #TODO
-        pass 
+        #pass 
 
     def actions(self, state: NuruominoState):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         actions = list()
         for region, item in self.regions.items():
-            if item ==0:
-                actions.append(self.board.all_possibilities(region))
+            if item == 0:
+                #actions.append(self.board.all_possibilities(region))
+                possibilities = self.board.all_possibilities(region)
+                for piece_id, variation, (row, col) in possibilities:
+                    actions.append((Piece(piece_id), variation, row, col))
+
             # pieces = [Piece(piece_id) for piece_id in ['L','T','I','S']]
             # for piece in pieces:
             #     value = self.board.try_place_piece_in_region(piece,region)
             #     if value:
             #         actions.append([region,piece.id,piece.shape])
+        #print("Ações: " + str(actions))
         return actions
         #TODO
-        pass 
+        #pass 
 
     def result(self, state: NuruominoState, action):
         """Retorna o estado resultante de executar a 'action' sobre
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
-        if action in self.actions(state):
-            print(f"{state.state_id}")
-            print(f"{action[0][1]}")
-            self.board.place_piece(Piece(action[0][0]),action[0][2][0],action[0][2][1])
-            self.regions[action[0][0]] = action[0][1]
-            state.board = self.board
-            return state
+        # if action in self.actions(state):
+        #     print(f"{state.state_id}")
+        #     print(f"{action[0][0]}") #action[0][0] é a peça (ID)
+        #     print(f"{action[0][1]}") #action[0][1] é a variação da peça
+        #     print(f"{action[0][2]}") #action[0][2] é a coordenada onde a peça é colocada
+        #     new_board = Board([row[:] for row in state.board.cells])
+
+        #     #self.board.place_piece(Piece(action[0][0]),action[0][2][0],action[0][2][1])
+        #     #self.regions[action[0][0]] = action[0][1]
+
+        #     #new_board.place_piece(Piece(action[0][0]),action[0][2][0],action[0][2][1])
+
+        #     new_board.place_specific(action[0][1], action[0][2][0], action[0][2][1], action[0][0])
+        #     #new_board[action[0][0]] = action[0][1]
+        #     #state.board = self.board
+        #     return NuruominoState(new_board)
+        
+        piece, variation, row, col = action
+        new_board = Board([row[:] for row in state.board.cells])
+        new_board.place_specific(variation, row, col, piece.id)
+        print("Depois de uma ação:\n")
+        new_board._show_board_()
+        return NuruominoState(new_board)
+
         #TODO
-        pass 
+        #pass 
         
 
     def goal_test(self, state: NuruominoState):
@@ -541,12 +566,24 @@ class Nuruomino(Problem):
         if len(self.regions) != self.board.number_of_regions():
             return False
         
+        #Atualiza o estado das regiões
+        self.regions = state.board.value_regions()
         #Isto aqui é usando as funções do tabuleiro
-        for region in self.regions.keys():
+        # for region in self.regions.keys():
+        #     row, col = self.board.find_first_region(0, 0, region, None)
+        #     adjacent_values = self.board.adjacent_values(row, col)
+        #     if self.regions[region] == 0 or self.regions[region] in adjacent_values:
+        #         return False
+        # return True
+
+        for region, value in self.regions.items():
+            if value == 0:
+                return False
             row, col = self.board.find_first_region(0, 0, region, None)
             adjacent_values = self.board.adjacent_values(row, col)
-            if self.regions[region] == 0 or self.regions[region] in adjacent_values:
+            if value in adjacent_values:
                 return False
+        #print("DIMELO CHINO")
         return True
 
         #aqui seria usando o numpy array
@@ -559,7 +596,7 @@ class Nuruomino(Problem):
         #             return False
         # return True
         #TODO
-        pass 
+        #pass 
 
     def h(self, node: Node):
         """Função heuristica utilizada para a procura A*."""
@@ -570,7 +607,7 @@ class Nuruomino(Problem):
         len(self.regions) - count(self.regions ==0)
         #node.action.
         # TODO
-        pass
+        #pass
 
 
 #TESTES
@@ -614,7 +651,7 @@ if __name__ == "__main__":
     # print(board.adjacent_positions(0, 0))
 
     # print("Vem as peças:\n")
-    # L_piece = Piece('L')
+    #L_piece = Piece('L')
     # S_piece = Piece('S')
     # T_piece = Piece('T')
     # I_piece = Piece('I')
@@ -630,6 +667,8 @@ if __name__ == "__main__":
     # #Tentar colocar L na região 1
     # print("Tentar colocar L na região 1\n")
     # board.place_piece(L_piece, 0, 0)
+    # board.place_piece(L_piece, 0, 2)
+    # board._show_board_()
 
     # print("Depois de colocar L na região 1\n")
     # board._show_board_()
@@ -673,12 +712,34 @@ if __name__ == "__main__":
 
     board = Board.parse_instance()
     board._show_board_()
+    L_piece = Piece('L')
+    print("Tentar colocar L na região 1\n")
+    board.place_piece(L_piece, 0, 0)
+    print("Depois de colocar L na região 2\n")
+    board.place_piece(L_piece, 0, 2)
+    board._show_board_()
+    board.can_place_specific(L_piece.variations.pop(), 0, 0, L_piece.id)
+    board._show_board_()
+
     # for region in range(board.number_of_regions()):
     #     if board.region_size(region) == 4:
     #         board.place_piece_dimension_4(region)
     # board.region_values = board.value_regions()
     # board._show_board_()
-    problem = Nuruomino(board)
-    node= depth_first_tree_search(problem)
-    if problem.goal_test(node):
-        problem.board._show_board_()
+    
+    #problem = Nuruomino(board)
+
+
+    # node= depth_first_tree_search(problem)
+    # if problem.goal_test(node):
+    #     print("Solução encontrada!")
+    #     problem.board._show_board_()
+
+    #solution = depth_first_tree_search(problem)
+
+    # # Mostra o resultado
+    # if solution:
+    #     print("encontrada\n")
+    #     solution.state.board._show_board_()
+    # else:
+    #     print("Nenhuma solução encontrada")
