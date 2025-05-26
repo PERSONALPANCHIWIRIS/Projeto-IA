@@ -490,11 +490,14 @@ class Board:
         return False #Não existe uma peça 2x2
 
 class Nuruomino(Problem):
+    state_id = 0 
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
         self.board = board
         #self.regions = board.number_of_regions()
         #self.regions = np.zeros(board.number_of_regions(), dtype=object)
+        self.initial = NuruominoState(board)
+        #self.regions = initialState.board.value_regions()
         self.regions = board.value_regions()
         #TODO
         pass 
@@ -503,8 +506,9 @@ class Nuruomino(Problem):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         actions = list()
-        for region in self.regions.items() == 0:
-            actions.append(self.board.all_possibilities(region))
+        for region, item in self.regions.items():
+            if item ==0:
+                actions.append(self.board.all_possibilities(region))
             # pieces = [Piece(piece_id) for piece_id in ['L','T','I','S']]
             # for piece in pieces:
             #     value = self.board.try_place_piece_in_region(piece,region)
@@ -520,8 +524,10 @@ class Nuruomino(Problem):
         das presentes na lista obtida pela execução de
         self.actions(state)."""
         if action in self.actions(state):
-            self.board.place_piece(action.piece)
-            self.regions[action[0]] = action[1]
+            print(f"{state.state_id}")
+            print(f"{action[0][1]}")
+            self.board.place_piece(Piece(action[0][0]),action[0][2][0],action[0][2][1])
+            self.regions[action[0][0]] = action[0][1]
             state.board = self.board
             return state
         #TODO
@@ -562,102 +568,117 @@ class Nuruomino(Problem):
         #     if self.regions[region] == 0:
         #         placed+1
         len(self.regions) - count(self.regions ==0)
-        node.action.
+        #node.action.
         # TODO
         pass
 
 
 #TESTES
 if __name__ == "__main__":
-    board = Board.parse_instance()
-    board._show_board_()
+    # board = Board.parse_instance()
+    # board._show_board_()
 
-    print("Values de coordenadas especificas\n")
-    board.get_value(0, 0)
-    board.get_value(2,2)
+    # print("Values de coordenadas especificas\n")
+    # board.get_value(0, 0)
+    # board.get_value(2,2)
 
-    print("Região de uma coordenada especifica\n")
-    board.get_region(1, 1)
-    board.get_region(3, 4)
+    # print("Região de uma coordenada especifica\n")
+    # board.get_region(1, 1)
+    # board.get_region(3, 4)
 
-    print("Find first in region\n")
-    print(str(board.find_first_region(0, 0, 1, None)))
-    print(str(board.find_first_region(0, 0, 3, None)))
+    # print("Find first in region\n")
+    # print(str(board.find_first_region(0, 0, 1, None)))
+    # print(str(board.find_first_region(0, 0, 3, None)))
 
-    print("Todas as cellas de uma região\n")
-    cells_1 = board.region_cells(1)
-    print("Região 1\n")
-    for cell in cells_1:
-        print(f"({cell.row}, {cell.col})")
-    cells_2 = board.region_cells(2)
-    print("Região 2\n")
-    for cell in cells_2:
-        print(f"({cell.row}, {cell.col})")
+    # print("Todas as cellas de uma região\n")
+    # cells_1 = board.region_cells(1)
+    # print("Região 1\n")
+    # for cell in cells_1:
+    #     print(f"({cell.row}, {cell.col})")
+    # cells_2 = board.region_cells(2)
+    # print("Região 2\n")
+    # for cell in cells_2:
+    #     print(f"({cell.row}, {cell.col})")
 
-    print("regiões adjacentes a uma especifica\n")
-    print(board.adjacent_regions(1))
-    print(board.adjacent_regions(3))
-    print(board.adjacent_regions(5))
+    # print("regiões adjacentes a uma especifica\n")
+    # print(board.adjacent_regions(1))
+    # print(board.adjacent_regions(3))
+    # print(board.adjacent_regions(5))
 
-    print("Valores adjacentes a uma região\n")
-    print(board.adjacent_values(1, 4))
-    print(board.adjacent_values(5,5))
+    # print("Valores adjacentes a uma região\n")
+    # print(board.adjacent_values(1, 4))
+    # print(board.adjacent_values(5,5))
 
-    print("Coordenadas adjacentes a uma região\n")
-    print(board.adjacent_positions(3, 3))
-    print(board.adjacent_positions(0, 0))
+    # print("Coordenadas adjacentes a uma região\n")
+    # print(board.adjacent_positions(3, 3))
+    # print(board.adjacent_positions(0, 0))
 
-    print("Vem as peças:\n")
-    L_piece = Piece('L')
-    S_piece = Piece('S')
-    T_piece = Piece('T')
-    I_piece = Piece('I')
-    print(L_piece.id)
-    print(L_piece.variations)
-    print(S_piece.id)
-    print(S_piece.variations)
-    print(T_piece.id)
-    print(T_piece.variations)
-    print(I_piece.id)
-    print(I_piece.variations)
+    # print("Vem as peças:\n")
+    # L_piece = Piece('L')
+    # S_piece = Piece('S')
+    # T_piece = Piece('T')
+    # I_piece = Piece('I')
+    # print(L_piece.id)
+    # print(L_piece.variations)
+    # print(S_piece.id)
+    # print(S_piece.variations)
+    # print(T_piece.id)
+    # print(T_piece.variations)
+    # print(I_piece.id)
+    # print(I_piece.variations)
 
-    #Tentar colocar L na região 1
-    print("Tentar colocar L na região 1\n")
-    board.place_piece(L_piece, 0, 0)
+    # #Tentar colocar L na região 1
+    # print("Tentar colocar L na região 1\n")
+    # board.place_piece(L_piece, 0, 0)
 
-    print("Depois de colocar L na região 1\n")
-    board._show_board_()
+    # print("Depois de colocar L na região 1\n")
+    # board._show_board_()
 
-    print("Região 2 deve ter menos uma cela\n")
-    cells_2 = board.region_cells(2)
-    print("Região 2\n")
-    for cell in cells_2:
-        print(f"({cell.row}, {cell.col})")
+    # print("Região 2 deve ter menos uma cela\n")
+    # cells_2 = board.region_cells(2)
+    # print("Região 2\n")
+    # for cell in cells_2:
+    #     print(f"({cell.row}, {cell.col})")
 
-    print(board.get_value(1, 1))
+    # print(board.get_value(1, 1))
 
-    print("Tenta colocar I na região 5\n")
-    board.place_piece(I_piece, 2, 5)
-    print("Depois de colocar I na região 5\n")
-    board._show_board_()
+    # print("Tenta colocar I na região 5\n")
+    # board.place_piece(I_piece, 2, 5)
+    # print("Depois de colocar I na região 5\n")
+    # board._show_board_()
 
-    print("tentar colocar I na região 2\n")
-    board.place_piece(I_piece, 0, 2)
-    board._show_board_()
+    # print("tentar colocar I na região 2\n")
+    # board.place_piece(I_piece, 0, 2)
+    # board._show_board_()
 
-    print("Indica se pode ao não colocar\n")
-    board.try_place_piece_in_region(I_piece, 2)
-    board.try_place_piece_in_region(T_piece, 2)
+    # print("Indica se pode ao não colocar\n")
+    # board.try_place_piece_in_region(I_piece, 2)
+    # board.try_place_piece_in_region(T_piece, 2)
 
 
 
     # board = Board.parse_instance()
     # board._show_board_()
     # problem = Nuruomino(board)
-    # for region in problem.regions.keys:
+    # for region in range(len(problem.regions)):
     #     if board.region_size(region) == 4:
     #         problem.board.place_piece_dimension_4(region)
-    # problem.regions = problem.board.value_regions()
-    # node= depth_first_tree_search(problem)
+    # try:
+    #     problem.regions = problem.board.value_regions()
+    #     node= depth_first_tree_search(problem)
+    # except Exception as e:
+    #     print(f"{e}")
     # if problem.goal_test(node):
     #     problem.board._show_board_()
+
+    board = Board.parse_instance()
+    board._show_board_()
+    # for region in range(board.number_of_regions()):
+    #     if board.region_size(region) == 4:
+    #         board.place_piece_dimension_4(region)
+    # board.region_values = board.value_regions()
+    # board._show_board_()
+    problem = Nuruomino(board)
+    node= depth_first_tree_search(problem)
+    if problem.goal_test(node):
+        problem.board._show_board_()
