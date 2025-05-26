@@ -346,9 +346,9 @@ class Board:
                         self.cells[row][col].piece = piece_value
                     elif value == 'X':
                         self.cells[row][col].piece = 'X'
+                        self.cells[row][col].blocked_region = self.cells[row][col].region #Só para mostrar no output final
                         self.cells[row][col].region = None #Esta cela deixa de ser considerada para calculos posteriores
-                        self.cells[row][col].blocked_region = cell_region #Só para mostrar no output final
-
+                        
     #Para as regiões de dimensão 4
     def place_piece_dimension_4(self, region):
         pieces = [Piece('L'), Piece('I'), Piece('T'), Piece('S')]
