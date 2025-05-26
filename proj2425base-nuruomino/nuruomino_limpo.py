@@ -8,7 +8,6 @@
 from sys import stdin
 from search import *
 import numpy as np
-from copy import deepcopy
 
 PIECES = {
     'L': [[0, 1],
@@ -82,6 +81,7 @@ class Cell:
         self.row = row
         self.col = col
         self.region = region
+        self.blocked_region = None
         self.piece = None
         #Ligações para os espaços adjacentes
         self.up = None
@@ -280,6 +280,19 @@ class Board:
                 print(str(self.cells[row][column].value()) + "\t", end="")
             print("\n")
 
+    def _show_board_end_(self):
+        """Mostra o tabuleiro no formato final, com as peças colocadas."""
+        for row in range(self.rows):
+            for column in range(self.columns):
+                cell = self.cells[row][column]
+                if cell.piece == 'X':
+                    # Mostra a região da célula se a peça for 'X'
+                    print(str(cell.blocked_region) + "\t", end="")
+                else:
+                    # Mostra o valor da célula (peça ou região)
+                    print(str(cell.value()) + "\t", end="")
+            print("\n")
+
     #Verifica se é possível colocar uma peça no tabuleiro
     #Pode ser usada, ou a inferior
     #ESTA RETORNA A VARIAÇÃO QUE PODE SER COLOCADA
@@ -334,6 +347,7 @@ class Board:
                     elif value == 'X':
                         self.cells[row][col].piece = 'X'
                         self.cells[row][col].region = None #Esta cela deixa de ser considerada para calculos posteriores
+                        self.cells[row][col].blocked_region = cell_region #Só para mostrar no output final
 
     #Para as regiões de dimensão 4
     def place_piece_dimension_4(self, region):
@@ -385,6 +399,34 @@ class Board:
                     break
             region_values[region + 1] = piece_found if piece_found != None else 0
         return region_values
+    
+    def copy(self):
+        # Cria novas células com os mesmos atributos
+        new_cells = [[Cell(cell.row, cell.col, cell.region) for cell in row] for row in self.cells]
+
+        # copia também o atributo `piece`:
+        for r in range(self.rows):
+            for c in range(self.columns):
+                new_cells[r][c].piece = self.cells[r][c].piece
+                new_cells[r][c].blocked_region = self.cells[r][c].blocked_region
+
+        # Reconstroi as referências entre as células
+        for row in range(self.rows):
+            for col in range(self.columns):
+                cell = new_cells[row][col]
+                if row > 0:
+                    cell.up = new_cells[row - 1][col]
+                if row < self.rows - 1:
+                    cell.down = new_cells[row + 1][col]
+                if col > 0:
+                    cell.left = new_cells[row][col - 1]
+                if col < self.columns - 1:
+                    cell.right = new_cells[row][col + 1]
+
+        # Cria um novo tabuleiro com as células copiadas
+        new_board = Board(new_cells)
+        new_board.region_values = dict(self.region_values)  # Copia os valores das regiões
+        return new_board
     
     
     #Verifica se existe uma peça 2x2 criada por uma cela especificada
@@ -451,7 +493,7 @@ class Nuruomino(Problem):
         das presentes na lista obtida pela execução de
         self.actions(state)."""    
         piece, variation, row, col = action
-        new_board = deepcopy(state.board)
+        new_board = state.board.copy()  # Cria uma cópia do tabuleiro atual
 
         if new_board.can_place_specific(variation, row, col, piece.id):
             new_board.place_specific(variation, row, col, piece.id)
@@ -459,10 +501,10 @@ class Nuruomino(Problem):
             for i in range(state.board.rows - 1):
                 for j in range(state.board.columns - 1):
                     square = [
-                        state.board.get_value(i, j),
-                        state.board.get_value(i, j+1),
-                        state.board.get_value(i+1, j),
-                        state.board.get_value(i+1, j+1)
+                        new_board.get_value(i, j),
+                        new_board.get_value(i, j+1),
+                        new_board.get_value(i+1, j),
+                        new_board.get_value(i+1, j+1)
                     ]
                     # conta todas as células “ocupadas” (peça ≠ None e ≠ 'X')
                     if sum(1 for v in square if v in ['L','I','T','S']) == 4:
@@ -530,6 +572,6 @@ if __name__ == "__main__":
     solution = depth_first_graph_search(problem)
     # Mostra o resultado
     if solution:
-        solution.state.board._show_board_()
+        solution.state.board._show_board_end_()
     else:
         print("Nenhuma solução encontrada")
