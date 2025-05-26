@@ -569,7 +569,8 @@ if __name__ == "__main__":
     
     problem = Nuruomino(board)
 
-    solution = depth_first_graph_search(problem)
+    #solution = depth_first_graph_search(problem)
+    solution = astar_search(problem,problem.h(),True)
     # Mostra o resultado
     if solution:
         solution.state.board._show_board_end_()
