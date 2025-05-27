@@ -885,7 +885,7 @@ if __name__ == "__main__":
 
     board._show_board_()
     
-    problem = Nuruomino(board)
+    #problem = Nuruomino(board)
 
     # try:
     #     solution = depth_first_tree_search(problem)
@@ -897,10 +897,10 @@ if __name__ == "__main__":
     #     print("encontrada\n")
     #     solution.state.board._show_board_()
 
-    solution = depth_first_graph_search(problem)
-    # Mostra o resultado
-    if solution:
-        print("encontrada\n")
-        solution.state.board._show_board_end_()
-    else:
-        print("Nenhuma solução encontrada")
+    # solution = depth_first_graph_search(problem)
+    # # Mostra o resultado
+    # if solution:
+    #     print("encontrada\n")
+    #     solution.state.board._show_board_end_()
+    # else:
+    #     print("Nenhuma solução encontrada")

@@ -291,7 +291,7 @@ class Board:
                 else:
                     # Mostra o valor da célula (peça ou região)
                     print(str(cell.value()) + "\t", end="")
-            print("\n")
+            print("\n", end="")
 
     #Verifica se é possível colocar uma peça no tabuleiro
     #Pode ser usada, ou a inferior
@@ -554,25 +554,19 @@ class Nuruomino(Problem):
 if __name__ == "__main__":
     #TEST DO NURUOMINO__________________________________________________________________
     board = Board.parse_instance()
-    board._show_board_()
 
     for region in range(board.number_of_regions()):
         if board.region_size(region + 1) == 4:
             board.place_piece_dimension_4(region + 1)
     board.region_values = board.value_regions()
     
-    print("As de dimensão 4 já foram\n")
-
-    board._show_board_()
-    
-    print("SEPARATOR\n")
-    
     problem = Nuruomino(board)
 
-    #solution = depth_first_graph_search(problem)
-    solution = astar_search(problem,problem.h(),True)
+    solution = depth_first_graph_search(problem)
+    #solution = astar_search(problem,problem.h(),True)
     # Mostra o resultado
     if solution:
         solution.state.board._show_board_end_()
+        print("\n", end="")
     else:
         print("Nenhuma solução encontrada")
