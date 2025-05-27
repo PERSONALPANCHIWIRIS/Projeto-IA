@@ -324,7 +324,7 @@ class Board:
                         return False #celula já ocipada
                 
                 elif value == 'X':
-                    if cell.piece is not None:
+                    if cell.piece is not None and cell.piece != 'X':
                         return False
         return True
                     

@@ -388,14 +388,17 @@ class Board:
                     #if value == 1:
                     if cell.piece is not None or cell.region != region or piece_value in adjacent_values or cell.piece == 'X':
                         #print("ja ocupada ou diferente, ou ao lado temos uma igual")
-                        #print("DIMELO CHINO")
+                        print(f"Cela: {row, col}, Piece: {cell.piece}, Region: {cell.region}, Adjacent: {adjacent_values}")
+                        print("DIMELO CHINO")
                         return False #celula já ocipada
                     # elif value == 'X':
                     #     if cell.piece is not None:
                     #         return False
                 
                 elif value == 'X':
-                    if cell.piece is not None:
+                    #if cell.piece is not None:
+                    if cell.piece is not None and cell.piece != 'X':
+                        print("DIMELO CHIONA")
                         return False
                     
         #print(variation)
@@ -872,20 +875,20 @@ if __name__ == "__main__":
 
     #DEVEMOS EVENTUALMENTE TAMBEM POR CADA ITERAÇÃO/AÇÃO VERIFICAR SE FORAM CRIADOS ESPAÇOS 2x2
     #TEST DO NURUOMINO__________________________________________________________________
-    board = Board.parse_instance()
-    board._show_board_()
-    for region in range(board.number_of_regions()):
-        #print("Region: " + str(region + 1))
-        if board.region_size(region + 1) == 4:
-            #print("Região de dimensão 4 encontrada")
-            board.place_piece_dimension_4(region + 1)
-    board.region_values = board.value_regions()
+    # board = Board.parse_instance()
+    # board._show_board_()
+    # for region in range(board.number_of_regions()):
+    #     #print("Region: " + str(region + 1))
+    #     if board.region_size(region + 1) == 4:
+    #         #print("Região de dimensão 4 encontrada")
+    #         board.place_piece_dimension_4(region + 1)
+    # board.region_values = board.value_regions()
     
-    print("As de dimensão 4 já foram")
-
-    board._show_board_()
+    # print("As de dimensão 4 já foram")
+    # #print(board.all_possibilities(2))
+    # board._show_board_()
     
-    #problem = Nuruomino(board)
+    # problem = Nuruomino(board)
 
     # try:
     #     solution = depth_first_tree_search(problem)
@@ -904,3 +907,42 @@ if __name__ == "__main__":
     #     solution.state.board._show_board_end_()
     # else:
     #     print("Nenhuma solução encontrada")
+
+    #TEST-02.TXT TROUBLESHOOTING
+    board = Board.parse_instance()
+    for region in range(board.number_of_regions()):
+        #print("Region: " + str(region + 1))
+        if board.region_size(region + 1) == 4:
+            #print("Região de dimensão 4 encontrada")
+            board.place_piece_dimension_4(region + 1)
+    board.region_values = board.value_regions()
+    
+    print("As de dimensão 4 já foram")
+    board._show_board_()
+
+    print("Variações de T")
+    T_piece = Piece('T')
+    L_piece = Piece('L')
+    I_piece = Piece('I')
+    #(('1', '1'), ('X', '1'), ('0', '1')) #esta variação de l para a região 3
+    for variation in T_piece.variations:
+        print(variation)
+    
+    print("Colocar todas menos a região 4")
+    board.place_specific((('1', '1'), ('X', '1'), ('0', '1')), 0, 4, L_piece.id)
+    #(('1', 'X'), ('1', '1'), ('1', 'X')) esta para aregião 6
+    board.place_specific((('1', 'X'), ('1', '1'), ('1', 'X')), 3, 0, T_piece.id)
+    board.place_piece(I_piece, 2, 2) #I na região 5
+    board._show_board_()
+    print("Ate agora, o nosso programa chega aqui, mas por alguma razão não ve a peça T como valida em 4 (região)")
+    print(f"Mapa de regiões: {board.region_values}")
+    cells = board.region_cells(4)
+    print(f"Celas de 4: {[(cell.row, cell.col) for cell in cells]}")
+    #print(board.all_possibilities(4))
+    print("Colocar T na região 4")
+    #board.place_specific((('X', '1'), ('1', '1'), ('X', '1')), 2, 3, T_piece.id)
+    board._show_board_()
+    #print("DEFINITIVAMENTE PODE SER COLOCADA")
+    board.can_place_specific((('X', '1'), ('1', '1'), ('X', '1')), 2, 3, T_piece.id)
+
+
