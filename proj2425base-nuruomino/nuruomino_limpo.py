@@ -167,6 +167,27 @@ class Board:
             
         return neighbours
     
+    #ESTA É AQUELA QUE HA DE SER USADA PARA VER SE AS PEÇAS "TOCAM-SE"
+    def adjacent_values_cell(self, row:int, col:int) -> list:
+        """Devolve os valores das celulas adjacentes à célula, em todas as direções, incluindo diagonais."""
+        if 0 > row >= self.rows or 0 > col >= self.columns:
+            return []
+        
+        directions = [  
+            (-1,  0),  # cima
+            ( 0, -1),  # esquerda    
+            ( 0,  1),  # direita    
+            ( 1,  0),  # baixo            
+        ]
+        neighbours = []
+        for r, c in directions:
+            r, c = row + r, col + c
+            if 0 <= r < self.rows and 0 <= c < self.columns:
+                value = self.cells[r][c].value()
+                if value != 'X' and value not in neighbours:
+                    neighbours.append(value)
+        return neighbours
+    
     #NOSSSA
     def region_cells(self, region:int, row=None, column=None, visited=None) -> list:
         """Devolve uma lista com todas as celulas de uma região."""
@@ -305,7 +326,6 @@ class Board:
     #Experimenta todas as formas de colocar uma peça
     def can_place_specific(self, variation, start_row, start_col, piece_value):
         region = self.cells[start_row][start_col].region
-        adjacent_values = self.adjacent_values(start_row, start_col)
 
         if self.region_values.get(region, 0) != 0:
             return False #Já existe uma peça nesta região
@@ -319,6 +339,7 @@ class Board:
                     return False #fora do tabuleiro
                 
                 cell = self.cells[row][col]
+                adjacent_values = self.adjacent_values_cell(row, col)
                 if value == '1': #Só vasmos considerar os lugares a ser ocupados
                     if cell.piece is not None or cell.region != region or piece_value in adjacent_values or cell.piece == 'X':
                         return False #celula já ocipada
@@ -346,7 +367,11 @@ class Board:
                         self.cells[row][col].piece = piece_value
                     elif value == 'X':
                         self.cells[row][col].piece = 'X'
-                        self.cells[row][col].blocked_region = self.cells[row][col].region #Só para mostrar no output final
+                        self.cells[row][col].blocked_region = (
+                            self.cells[row][col].region
+                            if self.cells[row][col].region is not None
+                            else self.cells[row][col].blocked_region
+                        )   
                         self.cells[row][col].region = None #Esta cela deixa de ser considerada para calculos posteriores
                         
     #Para as regiões de dimensão 4

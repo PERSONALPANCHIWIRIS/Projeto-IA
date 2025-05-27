@@ -167,6 +167,27 @@ class Board:
         #TODO
         pass
 
+    #ESTA É AQUELA QUE HA DE SER USADA PARA VER SE AS PEÇAS "TOCAM-SE"
+    def adjacent_values_cell(self, row:int, col:int) -> list:
+        """Devolve os valores das celulas adjacentes à célula, em todas as direções, incluindo diagonais."""
+        if 0 > row >= self.rows or 0 > col >= self.columns:
+            return []
+        
+        directions = [  
+            (-1,  0),  # cima
+            ( 0, -1),  # esquerda    
+            ( 0,  1),  # direita    
+            ( 1,  0),  # baixo            
+        ]
+        neighbours = []
+        for r, c in directions:
+            r, c = row + r, col + c
+            if 0 <= r < self.rows and 0 <= c < self.columns:
+                value = self.cells[r][c].value()
+                if value != 'X' and value not in neighbours:
+                    neighbours.append(value)
+        return neighbours
+    
     def adjacent_values(self, row:int, col:int) -> list:
         """Devolve os valores das celulas adjacentes à região, em todas as direções, incluindo diagonais."""
         if 0 < row >= self.rows or 0 < col >= self.columns:
@@ -351,12 +372,12 @@ class Board:
                 else:
                     # Mostra o valor da célula (peça ou região)
                     print(str(cell.value()) + "\t", end="")
-            print("\n")
+            print("\n", end="")
     
     #Experimenta todas as formas de colocar uma peça
     def can_place_specific(self, variation, start_row, start_col, piece_value):
         region = self.cells[start_row][start_col].region
-        adjacent_values = self.adjacent_values(start_row, start_col)
+        #adjacent_values = self.adjacent_values(start_row, start_col)
 
         if self.region_values.get(region, 0) != 0:
             return False #Já existe uma peça nesta região
@@ -371,6 +392,7 @@ class Board:
                     return False #fora do tabuleiro
                 
                 cell = self.cells[row][col]
+                adjacent_values = self.adjacent_values_cell(row, col)
                 if value == '1': #Só vasmos considerar os lugares a ser ocupados
                     # row = start_row + i
                     # col = start_col + j
@@ -388,8 +410,8 @@ class Board:
                     #if value == 1:
                     if cell.piece is not None or cell.region != region or piece_value in adjacent_values or cell.piece == 'X':
                         #print("ja ocupada ou diferente, ou ao lado temos uma igual")
-                        print(f"Cela: {row, col}, Piece: {cell.piece}, Region: {cell.region}, Adjacent: {adjacent_values}")
-                        print("DIMELO CHINO")
+                        #print(f"Cela: {row, col}, Piece: {cell.piece}, Region: {cell.region}, Adjacent: {adjacent_values}")
+                        #print("DIMELO CHINO")
                         return False #celula já ocipada
                     # elif value == 'X':
                     #     if cell.piece is not None:
@@ -398,11 +420,12 @@ class Board:
                 elif value == 'X':
                     #if cell.piece is not None:
                     if cell.piece is not None and cell.piece != 'X':
-                        print("DIMELO CHIONA")
+                        #print("DIMELO CHIONA")
                         return False
                     
         #print(variation)
         #print("CAN PLACE\n")
+        #print("FINALMENTEEEEEEEEE")
         return True
                     
     def place_piece(self, piece, start_row, start_col):
@@ -428,7 +451,12 @@ class Board:
                         self.cells[row][col].piece = piece_value
                     elif value == 'X':
                         self.cells[row][col].piece = 'X'
-                        self.cells[row][col].blocked_region = self.cells[row][col].region #Só para mostrar no output final
+                        #self.cells[row][col].blocked_region = self.cells[row][col].region #Só para mostrar no output final
+                        self.cells[row][col].blocked_region = (
+                            self.cells[row][col].region
+                            if self.cells[row][col].region is not None
+                            else self.cells[row][col].blocked_region
+                        )   
                         self.cells[row][col].region = None #Esta cela deixa de ser considerada para calculos posteriores        
                     #print("VALUE:" + str(piece_value) + "\n")
 
@@ -583,8 +611,8 @@ class Nuruomino(Problem):
         
         actions = list()
         current_regions = state.board.value_regions()
-        print(f"Gerando ações para o estado {state.id}")
-        print(f"Mapa de regiões: {current_regions}")
+        #print(f"Gerando ações para o estado {state.id}")
+        #print(f"Mapa de regiões: {current_regions}")
         #for region, item in self.regions.items():
         for region, item in current_regions.items():
             if item == 0:
@@ -596,7 +624,7 @@ class Nuruomino(Problem):
                         #actions.append((region, piece_id, variation, (row, col)))
                         #actions.append((Piece(piece_id), variation, (row, col)))
                         actions.append((Piece(piece_id), variation, row, col))
-                        print(f"Ação gerada: Peça {piece_id}, posição ({row}, {col}), regiao {region}, variação {variation}")
+                        #print(f"Ação gerada: Peça {piece_id}, posição ({row}, {col}), regiao {region}, variação {variation}")
 
             # pieces = [Piece(piece_id) for piece_id in ['L','T','I','S']]
             # for piece in pieces:
@@ -668,12 +696,12 @@ class Nuruomino(Problem):
 
 
             new_board.region_values = new_board.value_regions() 
-            print("Depois de uma ação:\n")
+            #print("Depois de uma ação:\n")
             #print("STATE ID: " + str(state.id))
             sucessor = NuruominoState(new_board)
             new_board._show_board_()
             #return NuruominoState(new_board)
-            print(f"State ID: {sucessor.id}\n")
+            #print(f"State ID: {sucessor.id}\n")
             return sucessor 
         
         print("Ação inválida, não é possível colocar a peça.")
@@ -875,20 +903,20 @@ if __name__ == "__main__":
 
     #DEVEMOS EVENTUALMENTE TAMBEM POR CADA ITERAÇÃO/AÇÃO VERIFICAR SE FORAM CRIADOS ESPAÇOS 2x2
     #TEST DO NURUOMINO__________________________________________________________________
-    # board = Board.parse_instance()
-    # board._show_board_()
-    # for region in range(board.number_of_regions()):
-    #     #print("Region: " + str(region + 1))
-    #     if board.region_size(region + 1) == 4:
-    #         #print("Região de dimensão 4 encontrada")
-    #         board.place_piece_dimension_4(region + 1)
-    # board.region_values = board.value_regions()
+    board = Board.parse_instance()
+    board._show_board_()
+    for region in range(board.number_of_regions()):
+        #print("Region: " + str(region + 1))
+        if board.region_size(region + 1) == 4:
+            #print("Região de dimensão 4 encontrada")
+            board.place_piece_dimension_4(region + 1)
+    board.region_values = board.value_regions()
     
-    # print("As de dimensão 4 já foram")
+    print("As de dimensão 4 já foram")
     # #print(board.all_possibilities(2))
-    # board._show_board_()
+    board._show_board_end_()
     
-    # problem = Nuruomino(board)
+    problem = Nuruomino(board)
 
     # try:
     #     solution = depth_first_tree_search(problem)
@@ -900,49 +928,49 @@ if __name__ == "__main__":
     #     print("encontrada\n")
     #     solution.state.board._show_board_()
 
-    # solution = depth_first_graph_search(problem)
+    solution = depth_first_graph_search(problem)
     # # Mostra o resultado
-    # if solution:
-    #     print("encontrada\n")
-    #     solution.state.board._show_board_end_()
-    # else:
-    #     print("Nenhuma solução encontrada")
+    if solution:
+        print("encontrada\n")
+        solution.state.board._show_board_end_()
+    else:
+        print("Nenhuma solução encontrada")
 
     #TEST-02.TXT TROUBLESHOOTING
-    board = Board.parse_instance()
-    for region in range(board.number_of_regions()):
-        #print("Region: " + str(region + 1))
-        if board.region_size(region + 1) == 4:
-            #print("Região de dimensão 4 encontrada")
-            board.place_piece_dimension_4(region + 1)
-    board.region_values = board.value_regions()
+    # board = Board.parse_instance()
+    # for region in range(board.number_of_regions()):
+    #     #print("Region: " + str(region + 1))
+    #     if board.region_size(region + 1) == 4:
+    #         #print("Região de dimensão 4 encontrada")
+    #         board.place_piece_dimension_4(region + 1)
+    # board.region_values = board.value_regions()
     
-    print("As de dimensão 4 já foram")
-    board._show_board_()
+    # print("As de dimensão 4 já foram")
+    # board._show_board_()
 
-    print("Variações de T")
-    T_piece = Piece('T')
-    L_piece = Piece('L')
-    I_piece = Piece('I')
-    #(('1', '1'), ('X', '1'), ('0', '1')) #esta variação de l para a região 3
-    for variation in T_piece.variations:
-        print(variation)
+    # print("Variações de T")
+    # T_piece = Piece('T')
+    # L_piece = Piece('L')
+    # I_piece = Piece('I')
+    # #(('1', '1'), ('X', '1'), ('0', '1')) #esta variação de l para a região 3
+    # for variation in T_piece.variations:
+    #     print(variation)
     
-    print("Colocar todas menos a região 4")
-    board.place_specific((('1', '1'), ('X', '1'), ('0', '1')), 0, 4, L_piece.id)
-    #(('1', 'X'), ('1', '1'), ('1', 'X')) esta para aregião 6
-    board.place_specific((('1', 'X'), ('1', '1'), ('1', 'X')), 3, 0, T_piece.id)
-    board.place_piece(I_piece, 2, 2) #I na região 5
-    board._show_board_()
-    print("Ate agora, o nosso programa chega aqui, mas por alguma razão não ve a peça T como valida em 4 (região)")
-    print(f"Mapa de regiões: {board.region_values}")
-    cells = board.region_cells(4)
-    print(f"Celas de 4: {[(cell.row, cell.col) for cell in cells]}")
-    #print(board.all_possibilities(4))
-    print("Colocar T na região 4")
-    #board.place_specific((('X', '1'), ('1', '1'), ('X', '1')), 2, 3, T_piece.id)
-    board._show_board_()
-    #print("DEFINITIVAMENTE PODE SER COLOCADA")
-    board.can_place_specific((('X', '1'), ('1', '1'), ('X', '1')), 2, 3, T_piece.id)
+    # print("Colocar todas menos a região 4")
+    # board.place_specific((('1', '1'), ('X', '1'), ('0', '1')), 0, 4, L_piece.id)
+    # #(('1', 'X'), ('1', '1'), ('1', 'X')) esta para aregião 6
+    # board.place_specific((('1', 'X'), ('1', '1'), ('1', 'X')), 3, 0, T_piece.id)
+    # board.place_piece(I_piece, 2, 2) #I na região 5
+    # board._show_board_()
+    # print("Ate agora, o nosso programa chega aqui, mas por alguma razão não ve a peça T como valida em 4 (região)")
+    # print(f"Mapa de regiões: {board.region_values}")
+    # cells = board.region_cells(4)
+    # print(f"Celas de 4: {[(cell.row, cell.col) for cell in cells]}")
+    # #print(board.all_possibilities(4))
+    # print("Colocar T na região 4")
+    # #board.place_specific((('X', '1'), ('1', '1'), ('X', '1')), 2, 3, T_piece.id)
+    # board._show_board_()
+    # #print("DEFINITIVAMENTE PODE SER COLOCADA")
+    # board.can_place_specific((('X', '1'), ('1', '1'), ('X', '1')), 2, 3, T_piece.id)
 
 
