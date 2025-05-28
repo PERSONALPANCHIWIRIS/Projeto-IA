@@ -574,7 +574,17 @@ class Nuruomino(Problem):
 
     def h(self, node: Node):
         """Função heuristica utilizada para a procura A*."""
-        len(self.regions) - count(self.regions ==0)
+        count=0
+        for region, value in self.regions.items():
+            if region ==0:
+                count+=1
+            cost = len(self.regions) - count
+            cost2 = self.board.region_size(region)
+        #node.depth
+        #node.path_cost= cost 
+        return 0.8*cost+0.2*cost2
+        
+        #count(self.regions ==0)
 
 if __name__ == "__main__":
     #TEST DO NURUOMINO__________________________________________________________________
@@ -586,9 +596,14 @@ if __name__ == "__main__":
     board.region_values = board.value_regions()
     
     problem = Nuruomino(board)
-
-    solution = depth_first_graph_search(problem)
-    #solution = astar_search(problem,problem.h(),True)
+    #print(f"problem.h is {problem.h} (type: {type(problem.h)})")
+    node = Node(problem.initial)
+    print(f"problem.h is {node.state} (type: {type(node.state)})") 
+    #solution = depth_first_graph_search(problem)
+    #solution = astar_search(problem,problem.h(node),True)
+    solution = astar_search(problem,problem.h(node),True)
+    #solution = astar_search(problem,True)
+    #solution = uniform_cost_search(problem,True)
     # Mostra o resultado
     if solution:
         solution.state.board._show_board_end_()
