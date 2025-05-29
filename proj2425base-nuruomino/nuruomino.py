@@ -725,7 +725,7 @@ class Nuruomino(Problem):
             sucessor.region_values = new_values  # Atualiza os valores das regiões no novo estado
             new_board._show_board_()
             #return NuruominoState(new_board)
-            #print(f"State ID: {sucessor.id}\n")
+            print(f"State ID: {sucessor.id}\n")
             return sucessor 
         
         print("Ação inválida, não é possível colocar a peça.")
@@ -937,13 +937,13 @@ if __name__ == "__main__":
             board.place_piece_dimension_4(region + 1)
     board.region_values = board.value_regions()
     
-    print("As de dimensão 4 já foram")
-    # # #print(board.all_possibilities(2))
-    board._show_board_end_()
-    print("VER O X")
-    board._show_board_()
+    # print("As de dimensão 4 já foram")
+    # # # #print(board.all_possibilities(2))
+    # board._show_board_end_()
+    # print("VER O X")
+    # board._show_board_()
     
-    #problem = Nuruomino(board)
+    problem = Nuruomino(board)
 
     # try:
     #     solution = depth_first_tree_search(problem)
@@ -955,13 +955,13 @@ if __name__ == "__main__":
     #     print("encontrada\n")
     #     solution.state.board._show_board_()
 
-    # solution = depth_first_graph_search(problem)
-    # # Mostra o resultado
-    # if solution:
-    #     print("encontrada\n")
-    #     solution.state.board._show_board_end_()
-    # else:
-    #     print("Nenhuma solução encontrada")
+    solution = depth_first_graph_search(problem)
+    # Mostra o resultado
+    if solution:
+        print("encontrada\n")
+        solution.state.board._show_board_end_()
+    else:
+        print("Nenhuma solução encontrada")
 
     #TEST-02.TXT TROUBLESHOOTING
     # board = Board.parse_instance()
