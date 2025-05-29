@@ -607,12 +607,15 @@ class Nuruomino(Problem):
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
         self.board = board
-        #self.regions = board.number_of_regions()
+        self.regions = board.number_of_regions()
         #self.regions = np.zeros(board.number_of_regions(), dtype=object)
         self.initial = NuruominoState(board)
         #self.regions = initialState.board.value_regions()
         #self.regions = board.value_regions()
         #print("TEST")
+        self.possibilities = {}
+        for region in range(board.number_of_regions()):
+            self.possibilities[region + 1] = board.all_possibilities(region + 1)
         #TODO
         #pass 
 
@@ -631,8 +634,10 @@ class Nuruomino(Problem):
         for region, item in current_regions.items():
             if item == 0:
                 #actions.append(self.board.all_possibilities(region))
-                possibilities = state.board.all_possibilities(region)
-                for piece_id, variation, (row, col) in possibilities:
+                #possibilities = state.board.all_possibilities(region)
+                #for possibility in possibilities:
+                #    can_place_specific(possibility)
+                for piece_id, variation, (row, col) in self.possibilities[region]:
                     if state.board.can_place_specific(variation, row, col, piece_id):
                         #print(f"Peça {piece_id} pode ser colocada na região {region} na posição ({row}, {col}) com variação {variation}")
                         #actions.append((region, piece_id, variation, (row, col)))
@@ -712,7 +717,7 @@ class Nuruomino(Problem):
             #new_board.region_values = new_board.value_regions() 
 
             new_values = dict(state.region_values) #Copia para alterar só a copia criada
-            piece_region = new_board.board.get_region(row, col)
+            piece_region = new_board.get_region(row, col)
             new_values[piece_region] = piece.id  # Atualiza o valor da região com o ID da peça colocada
             #print("Depois de uma ação:\n")
             #print("STATE ID: " + str(state.id))
@@ -932,11 +937,11 @@ if __name__ == "__main__":
             board.place_piece_dimension_4(region + 1)
     board.region_values = board.value_regions()
     
-    # print("As de dimensão 4 já foram")
+    print("As de dimensão 4 já foram")
     # # #print(board.all_possibilities(2))
-    # board._show_board_end_()
-    # print("VER O X")
-    # board._show_board_()
+    board._show_board_end_()
+    print("VER O X")
+    board._show_board_()
     
     #problem = Nuruomino(board)
 
@@ -950,9 +955,9 @@ if __name__ == "__main__":
     #     print("encontrada\n")
     #     solution.state.board._show_board_()
 
-    #solution = depth_first_graph_search(problem)
+    # solution = depth_first_graph_search(problem)
     # # Mostra o resultado
-    #if solution:
+    # if solution:
     #     print("encontrada\n")
     #     solution.state.board._show_board_end_()
     # else:
@@ -1004,4 +1009,4 @@ if __name__ == "__main__":
 #     board.can_place_specific((('X', 1, 'X'), (1, 1, 1)), cell.row, cell.col, 'T')
 
 
-
+#ALLL PSOSSIBILITIES E REGION CELLS CALCULAR UMA UNICA VEZ
