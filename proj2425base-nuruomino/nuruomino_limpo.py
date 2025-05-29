@@ -365,11 +365,13 @@ class Board:
     #Experimenta todas as formas de colocar uma peça
     def can_place_specific(self, variation, start_row, start_col, piece_value):
         region = self.cells[start_row][start_col].region
+        adjacent_region_values = self.adjacent_values(start_row, start_col) #vemos que nas regiões vizinhas há peças
 
         if self.region_values.get(region, 0) != 0:
             return False #Já existe uma peça nesta região
         anchor_row, anchor_col = self.get_anchor(variation)
         
+        touches_other_piece = False
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
                 row = start_row + i - anchor_row
@@ -383,10 +385,19 @@ class Board:
                 if value == '1': #Só vasmos considerar os lugares a ser ocupados
                     if cell.piece is not None or cell.region != region or piece_value in adjacent_values or cell.piece == 'X':
                         return False #celula já ocipada
+                    
+                    for val in adjacent_values:
+                        if val != piece_value and val in ['L', 'I', 'T', 'S']:
+                            touches_other_piece = True
+
                 
                 elif value == 'X':
                     if cell.piece is not None and cell.piece != 'X':
                         return False
+        has_neighbor_pieces = any(val in ['L', 'I', 'T', 'S'] and val != piece_value for val in adjacent_region_values)
+        if has_neighbor_pieces and not touches_other_piece:
+            return False
+        
         return True
                     
     def place_piece(self, piece, start_row, start_col):

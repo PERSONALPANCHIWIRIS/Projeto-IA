@@ -338,7 +338,7 @@ class Board:
                         queue.append((new_row, new_col))
 
         # Verifica se todas as células com peças foram visitadas
-        #print(f"Visited: {str(len(visited))}, Piece Cells: {str(len(piece_cells))}")
+        print(f"Visited: {str(len(visited))}, Piece Cells: {str(len(piece_cells))}")
         return len(visited) == len(piece_cells)
 
 
@@ -418,11 +418,13 @@ class Board:
     def can_place_specific(self, variation, start_row, start_col, piece_value):
         region = self.cells[start_row][start_col].region
         #adjacent_values = self.adjacent_values(start_row, start_col)
+        adjacent_region_values = self.adjacent_values(start_row, start_col) #vemos que nas regiões vizinhas há peças
 
         if self.region_values.get(region, 0) != 0:
             return False #Já existe uma peça nesta região
         anchor_row, anchor_col = self.get_anchor(variation)
 
+        touches_other_piece = False
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
                 row = start_row + i - anchor_row
@@ -435,7 +437,7 @@ class Board:
                 cell = self.cells[row][col]
                 #print("Coordenadas: " + str((row, col)) + " Valor: " + str(value) + " Região: " + str(cell.region) + " Peça: " + str(cell.piece))
                 adjacent_values = self.adjacent_values_cell(row, col)
-                adjacent_region_values = self.adjacent_values(row, col) #vemos que nas regiões vizinhas há peças
+                
                 #Deve ligar-se a alguma
                 if value == '1': #Só vasmos considerar os lugares a ser ocupados
                     # row = start_row + i
@@ -457,6 +459,11 @@ class Board:
                         #print(f"Cela: {row, col}, Piece: {cell.piece}, Region: {cell.region}, Adjacent: {adjacent_values}")
                         #print("DIMELO CHINO")
                         return False #celula já ocipada
+                    
+                    for val in adjacent_values:
+                        if val != piece_value and val in ['L', 'I', 'T', 'S']:
+                            touches_other_piece = True
+
                     # elif value == 'X':
                     #     if cell.piece is not None:
                     #         return False
@@ -468,6 +475,11 @@ class Board:
                     if cell.piece is not None and cell.piece != 'X':
                         #print("DIMELO CHIONA")
                         return False
+                    
+        has_neighbor_pieces = any(val in ['L', 'I', 'T', 'S'] and val != piece_value for val in adjacent_region_values)
+        if has_neighbor_pieces and not touches_other_piece:
+            return False
+
                     
         #print(variation)
         #print("CAN PLACE\n")
@@ -552,7 +564,7 @@ class Board:
                     start_row, start_col = cell.row, cell.col
                     if self.can_place_specific(variation, start_row, start_col, piece.id):
                         possible.append((piece.id, variation, (start_row, start_col)))
-                        print(f"Peça {piece.id} pode ser colocada na região {region} na posição ({start_row}, {start_col}) com variação {variation}")
+                        #print(f"Peça {piece.id} pode ser colocada na região {region} na posição ({start_row}, {start_col}) com variação {variation}")
         return possible
         
 
@@ -968,7 +980,7 @@ if __name__ == "__main__":
     #DEVEMOS EVENTUALMENTE TAMBEM POR CADA ITERAÇÃO/AÇÃO VERIFICAR SE FORAM CRIADOS ESPAÇOS 2x2
     #TEST DO NURUOMINO__________________________________________________________________
     board = Board.parse_instance()
-    # board._show_board_()
+    # # board._show_board_()
     for region in range(board.number_of_regions()):
         #print("Region: " + str(region + 1))
         if board.region_size(region + 1) == 4:
@@ -1103,6 +1115,27 @@ if __name__ == "__main__":
     # board.place_specific((('1', '1', '1', '1'),), 9, 6, 'I')
     # board._show_board_end_()
     # board.are_pieces_connected()
+    # for i in range(board.rows - 1):
+    #     for j in range(board.columns - 1):
+    #         square = [
+    #             board.get_value(i, j),
+    #             board.get_value(i, j+1),
+    #             board.get_value(i+1, j),
+    #             board.get_value(i+1, j+1)
+    #         ]
+    #         # conta todas as células “ocupadas” (peça ≠ None e ≠ 'X')
+    #         if sum(1 for v in square if v in ['L','I','T','S']) == 4:
+    #             print("Falhou o 2x2")
+
+    # current_regions = board.value_regions()
+    # for region, value in current_regions.items():
+    #         if value == 0:
+    #             print("FALSOOOOO 1")
+                
+    # print("Todas as regiões preenchidas corretamente")
+    
+
+    
 
 
 
