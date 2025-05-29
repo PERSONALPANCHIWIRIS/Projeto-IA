@@ -310,6 +310,37 @@ class Board:
         #Não existe região
         return None
 
+    #Fazer uma BFS para ver se as celas com peça (preenchidas) têm todas ligações entre si
+    def are_pieces_connected(self):
+        visited = set()
+        piece_cells = []
+
+        # Pegar todas as coordenadas com peças colocadas
+        for row in range(self.rows):
+            for col in range(self.columns):
+                if self.cells[row][col].piece in ['L', 'I', 'T', 'S']:
+                    piece_cells.append((row, col))
+
+        if not piece_cells:
+            return False  # Nenhuma peça colocada
+
+        # Iniciar BFS 
+        queue = [piece_cells[0]]
+        visited.add(piece_cells[0])
+
+        while queue:
+            r, c = queue.pop(0)
+            for direction_row, direction_col in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # 4 direções
+                new_row, new_col = r + direction_row, c + direction_col
+                if 0 <= new_row < self.rows and 0 <= new_col < self.columns:
+                    if (new_row, new_col) not in visited and self.cells[new_row][new_col].piece in ['L', 'I', 'T', 'S']:
+                        visited.add((new_row, new_col))
+                        queue.append((new_row, new_col))
+
+        # Verifica se todas as células com peças foram visitadas
+        print(f"Visited: {str(len(visited))}, Piece Cells: {str(len(piece_cells))}")
+        return len(visited) == len(piece_cells)
+
 
     @staticmethod
     def parse_instance():
@@ -404,6 +435,8 @@ class Board:
                 cell = self.cells[row][col]
                 #print("Coordenadas: " + str((row, col)) + " Valor: " + str(value) + " Região: " + str(cell.region) + " Peça: " + str(cell.piece))
                 adjacent_values = self.adjacent_values_cell(row, col)
+                adjacent_region_values = self.adjacent_values(row, col) #vemos que nas regiões vizinhas há peças
+                #Deve ligar-se a alguma
                 if value == '1': #Só vasmos considerar os lugares a ser ocupados
                     # row = start_row + i
                     # col = start_col + j
@@ -427,6 +460,8 @@ class Board:
                     # elif value == 'X':
                     #     if cell.piece is not None:
                     #         return False
+
+
                 
                 elif value == 'X':
                     #if cell.piece is not None:
@@ -517,7 +552,7 @@ class Board:
                     start_row, start_col = cell.row, cell.col
                     if self.can_place_specific(variation, start_row, start_col, piece.id):
                         possible.append((piece.id, variation, (start_row, start_col)))
-                        #print(f"Peça {piece.id} pode ser colocada na região {region} na posição ({start_row}, {start_col}) com variação {variation}")
+                        print(f"Peça {piece.id} pode ser colocada na região {region} na posição ({start_row}, {start_col}) com variação {variation}")
         return possible
         
 
@@ -776,12 +811,16 @@ class Nuruomino(Problem):
             if value == 0:
                 #print("FALSOOOOO 1")
                 return False
-            row, col = state.board.find_first_region(0, 0, region, None)
-            adjacent_values = state.board.adjacent_values(row, col)
-            if value in adjacent_values:
-                #print("STATE ID: " + str(state.id) + "\n")
-                #print("FALSOOOOO 2" + "\n")
-                return False
+            #row, col = state.board.find_first_region(0, 0, region, None)
+            # adjacent_values = state.board.adjacent_values_cell(row, col)
+            # if value in adjacent_values:
+            #     #print("STATE ID: " + str(state.id) + "\n")
+            #     #print("FALSOOOOO 2" + "\n")
+            #     return False
+
+        if not state.board.are_pieces_connected():
+            #print("FALSOOOOO 3")
+            return False
         #print("DIMELO CHINO")
         return True
 
@@ -928,14 +967,14 @@ if __name__ == "__main__":
 
     #DEVEMOS EVENTUALMENTE TAMBEM POR CADA ITERAÇÃO/AÇÃO VERIFICAR SE FORAM CRIADOS ESPAÇOS 2x2
     #TEST DO NURUOMINO__________________________________________________________________
-    board = Board.parse_instance()
-    board._show_board_()
-    for region in range(board.number_of_regions()):
-        #print("Region: " + str(region + 1))
-        if board.region_size(region + 1) == 4:
-            #print("Região de dimensão 4 encontrada")
-            board.place_piece_dimension_4(region + 1)
-    board.region_values = board.value_regions()
+    # board = Board.parse_instance()
+    # board._show_board_()
+    # for region in range(board.number_of_regions()):
+    #     #print("Region: " + str(region + 1))
+    #     if board.region_size(region + 1) == 4:
+    #         #print("Região de dimensão 4 encontrada")
+    #         board.place_piece_dimension_4(region + 1)
+    # board.region_values = board.value_regions()
     
     # print("As de dimensão 4 já foram")
     # # # #print(board.all_possibilities(2))
@@ -943,7 +982,7 @@ if __name__ == "__main__":
     # print("VER O X")
     # board._show_board_()
     
-    problem = Nuruomino(board)
+    #problem = Nuruomino(board)
 
     # try:
     #     solution = depth_first_tree_search(problem)
@@ -955,13 +994,13 @@ if __name__ == "__main__":
     #     print("encontrada\n")
     #     solution.state.board._show_board_()
 
-    solution = depth_first_graph_search(problem)
-    # Mostra o resultado
-    if solution:
-        print("encontrada\n")
-        solution.state.board._show_board_end_()
-    else:
-        print("Nenhuma solução encontrada")
+    # solution = depth_first_graph_search(problem)
+    # # Mostra o resultado
+    # if solution:
+    #     print("encontrada\n")
+    #     solution.state.board._show_board_end_()
+    # else:
+    #     print("Nenhuma solução encontrada")
 
     #TEST-02.TXT TROUBLESHOOTING
     # board = Board.parse_instance()
@@ -1008,5 +1047,61 @@ if __name__ == "__main__":
 #     print(f"({cell.row}, {cell.col})")
 #     board.can_place_specific((('X', 1, 'X'), (1, 1, 1)), cell.row, cell.col, 'T')
 
+#_____________________DEBUG teste 4
+    board = Board.parse_instance()
+    print("Number of regions: " + str(board.number_of_regions()))
+    print("Peça região 1")
+    board.all_possibilities(1)
+    board.place_specific((('1', '1', '1', '1'),), 0, 0, 'I')
+    board._show_board_end_()
+    print("Peça região 2")
+    board.all_possibilities(2)
+    board.place_specific((('1', '1'), ('X', '1'), ('0', '1')), 0, 4, 'L')
+    board._show_board_end_()
+    print("Peça região 3")
+    board.all_possibilities(3)
+    board.place_specific((('1', '1', '1', '1'),), 0, 6, 'I')
+    board._show_board_end_()
+    print("Peça região 4")
+    board.all_possibilities(4)
+    board.place_specific((('X', '1'), ('1', '1'), ('1', 'X')), 1, 1, 'S')
+    board._show_board_end_()
+    print("Peça região 5")
+    board.all_possibilities(5)
+    board.place_specific((('1',), ('1',), ('1',), ('1',)), 6, 1, 'I')
+    board._show_board_end_()
+    print("Peça região 6")
+    board.all_possibilities(6)
+    board.place_specific((('1', 'X'), ('1', '1'), ('X', '1')), 1, 3, 'S')
+    board._show_board_end_()
+    print("Peça região 7")
+    board.all_possibilities(7)
+    board.place_specific((('1',), ('1',), ('1',), ('1',)), 3, 6, 'I')
+    board._show_board_end_()
+    print("Peça região 8")
+    board.all_possibilities(8)
+    board.place_specific((('1', '0'), ('1', 'X'), ('1', '1')), 1, 7, 'L')
+    board._show_board_end_()
+    print("Peça região 9")
+    board.all_possibilities(9)
+    board.place_specific((('1',), ('1',), ('1',), ('1',)), 2, 9, 'I')
+    board._show_board_end_()
+    print("Peça região 10")
+    board.all_possibilities(10)
+    board.place_specific((('1',), ('1',), ('1',), ('1',)), 5, 4, 'I')
+    board._show_board_end_()
+    print("Peça região 11")
+    board.all_possibilities(11)
+    board.place_specific((('1', '0'), ('1', 'X'), ('1', '1')), 4, 2, 'L')
+    board._show_board_end_()
+    print("Peça região 12")
+    board.all_possibilities(12)
+    board.place_specific((('X', '1', '1'), ('1', '1', 'X')), 7, 6, 'S')
+    board._show_board_end_()
+    print("Peça região 13")
+    board.all_possibilities(13)
+    board.place_specific((('1', '1', '1', '1'),), 9, 6, 'I')
+    board._show_board_end_()
 
-#ALLL PSOSSIBILITIES E REGION CELLS CALCULAR UMA UNICA VEZ
+
+

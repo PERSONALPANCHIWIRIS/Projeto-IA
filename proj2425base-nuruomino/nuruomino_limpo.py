@@ -69,6 +69,7 @@ class NuruominoState:
         self.board = board
         self.id = NuruominoState.state_id
         NuruominoState.state_id += 1
+        self.region_values = board.value_regions()
 
     def __lt__(self, other):
         """ Este método é utilizado em caso de empate na gestão da lista
@@ -263,6 +264,36 @@ class Board:
         
         #Não existe região
         return None
+    
+    #Fazer uma BFS para ver se as celas com peça (preenchidas) têm todas ligações entre si
+    def are_pieces_connected(self):
+        visited = set()
+        piece_cells = []
+
+        # Pegar todas as coordenadas com peças colocadas
+        for row in range(self.rows):
+            for col in range(self.columns):
+                if self.cells[row][col].piece in ['L', 'I', 'T', 'S']:
+                    piece_cells.append((row, col))
+
+        if not piece_cells:
+            return False  # Nenhuma peça colocada
+
+        # Iniciar BFS 
+        queue = [piece_cells[0]]
+        visited.add(piece_cells[0])
+
+        while queue:
+            r, c = queue.pop(0)
+            for direction_row, direction_col in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # 4 direções
+                new_row, new_col = r + direction_row, c + direction_col
+                if 0 <= new_row < self.rows and 0 <= new_col < self.columns:
+                    if (new_row, new_col) not in visited and self.cells[new_row][new_col].piece in ['L', 'I', 'T', 'S']:
+                        visited.add((new_row, new_col))
+                        queue.append((new_row, new_col))
+
+        # Verifica se todas as células com peças foram visitadas
+        return len(visited) == len(piece_cells)
 
     @staticmethod
     def parse_instance():
@@ -505,6 +536,9 @@ class Nuruomino(Problem):
         self.board = board
         self.initial = NuruominoState(board)
         self.regions = board.value_regions()
+        self.possibilities = {}
+        for region in range(board.number_of_regions()):
+            self.possibilities[region + 1] = board.all_possibilities(region + 1)
 
     def actions(self, state: NuruominoState):
         """Retorna uma lista de ações que podem ser executadas a
@@ -513,11 +547,10 @@ class Nuruomino(Problem):
             return []
         
         actions = list()
-        current_regions = state.board.value_regions()
+        current_regions = state.region_values
         for region, item in current_regions.items():
             if item == 0:
-                possibilities = state.board.all_possibilities(region)
-                for piece_id, variation, (row, col) in possibilities:
+                for piece_id, variation, (row, col) in self.possibilities[region]:
                     if state.board.can_place_specific(variation, row, col, piece_id):
                         actions.append((Piece(piece_id), variation, row, col))
         return actions
@@ -545,8 +578,11 @@ class Nuruomino(Problem):
                     if sum(1 for v in square if v in ['L','I','T','S']) == 4:
                         return None
                     
-            new_board.region_values = new_board.value_regions() 
+            new_values = dict(state.region_values) #Copia para alterar só a copia criada
+            piece_region = new_board.get_region(row, col)
+            new_values[piece_region] = piece.id  # Atualiza o valor da região com o ID da peça colocada
             sucessor = NuruominoState(new_board)
+            sucessor.region_values = new_values  # Atualiza os valores das regiões no novo estado
             return sucessor 
         
         return None
@@ -576,10 +612,10 @@ class Nuruomino(Problem):
         for region, value in current_regions.items():
             if value == 0:
                 return False
-            row, col = state.board.find_first_region(0, 0, region, None)
-            adjacent_values = state.board.adjacent_values(row, col)
-            if value in adjacent_values:
-                return False
+            
+        if not state.board.are_pieces_connected():
+            return False
+        
         return True
 
     def h(self, node: Node):
@@ -608,7 +644,7 @@ if __name__ == "__main__":
     problem = Nuruomino(board)
     #print(f"problem.h is {problem.h} (type: {type(problem.h)})")
     node = Node(problem.initial)
-    print(f"problem.h is {node.state} (type: {type(node.state)})") 
+    #print(f"problem.h is {node.state} (type: {type(node.state)})") 
     solution = depth_first_graph_search(problem)
     #solution = astar_search(problem,problem.h(node),True)
     #solution = astar_search(problem,problem.h(node),True)
