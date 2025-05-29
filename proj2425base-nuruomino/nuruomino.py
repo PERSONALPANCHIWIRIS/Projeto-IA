@@ -73,6 +73,7 @@ class NuruominoState:
         #Nuruomino.state_id += 1
         NuruominoState.state_id += 1
         #print(f"Estado criado: {self.id}\n")
+        self.region_values = board.value_regions()
 
     def __lt__(self, other):
         """ Este método é utilizado em caso de empate na gestão da lista
@@ -169,7 +170,7 @@ class Board:
 
     #ESTA É AQUELA QUE HA DE SER USADA PARA VER SE AS PEÇAS "TOCAM-SE"
     def adjacent_values_cell(self, row:int, col:int) -> list:
-        """Devolve os valores das celulas adjacentes à célula, em todas as direções, incluindo diagonais."""
+        """Devolve os valores das celulas adjacentes à célula, em todas as direções"""
         if 0 > row >= self.rows or 0 > col >= self.columns:
             return []
         
@@ -374,6 +375,14 @@ class Board:
                     print(str(cell.value()) + "\t", end="")
             print("\n", end="")
     
+    @staticmethod
+    def get_anchor(variation):
+        for i, row in enumerate(variation):
+            for j, val in enumerate(row):
+                if val == '1':
+                    return i, j
+        return 0, 0
+
     #Experimenta todas as formas de colocar uma peça
     def can_place_specific(self, variation, start_row, start_col, piece_value):
         region = self.cells[start_row][start_col].region
@@ -381,17 +390,19 @@ class Board:
 
         if self.region_values.get(region, 0) != 0:
             return False #Já existe uma peça nesta região
-        
+        anchor_row, anchor_col = self.get_anchor(variation)
+
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
-                row = start_row + i
-                col = start_col + j
+                row = start_row + i - anchor_row
+                col = start_col + j - anchor_col
 
                 if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
                     #print("fora do tabuleiro")
                     return False #fora do tabuleiro
                 
                 cell = self.cells[row][col]
+                #print("Coordenadas: " + str((row, col)) + " Valor: " + str(value) + " Região: " + str(cell.region) + " Peça: " + str(cell.piece))
                 adjacent_values = self.adjacent_values_cell(row, col)
                 if value == '1': #Só vasmos considerar os lugares a ser ocupados
                     # row = start_row + i
@@ -442,11 +453,12 @@ class Board:
         cell_region = self.cells[start_row][start_col].region
         self.region_values[cell_region] = piece_value #Atualiza o valor da região
         #TESTAR
+        anchor_row, anchor_col = self.get_anchor(variation)
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
                 if value == '1' or value == 'X': #Aqui o X determina lugares que não podem ser ocupados (criariamos uma peça 2x2)
-                    row = start_row + i
-                    col = start_col + j
+                    row = start_row + i - anchor_row
+                    col = start_col + j - anchor_col
                     if value == '1': #Parece que se temos carateres e inteiros num array, o numpy transforma tudo a carater
                         self.cells[row][col].piece = piece_value
                     elif value == 'X':
@@ -599,7 +611,8 @@ class Nuruomino(Problem):
         #self.regions = np.zeros(board.number_of_regions(), dtype=object)
         self.initial = NuruominoState(board)
         #self.regions = initialState.board.value_regions()
-        self.regions = board.value_regions()
+        #self.regions = board.value_regions()
+        #print("TEST")
         #TODO
         #pass 
 
@@ -610,7 +623,8 @@ class Nuruomino(Problem):
             return []
         
         actions = list()
-        current_regions = state.board.value_regions()
+        #current_regions = state.board.value_regions()
+        current_regions = state.region_values
         #print(f"Gerando ações para o estado {state.id}")
         #print(f"Mapa de regiões: {current_regions}")
         #for region, item in self.regions.items():
@@ -695,10 +709,15 @@ class Nuruomino(Problem):
             #             return None  # Retorna o estado original para descartar o novo estado
 
 
-            new_board.region_values = new_board.value_regions() 
+            #new_board.region_values = new_board.value_regions() 
+
+            new_values = dict(state.region_values) #Copia para alterar só a copia criada
+            piece_region = new_board.board.get_region(row, col)
+            new_values[piece_region] = piece.id  # Atualiza o valor da região com o ID da peça colocada
             #print("Depois de uma ação:\n")
             #print("STATE ID: " + str(state.id))
             sucessor = NuruominoState(new_board)
+            sucessor.region_values = new_values  # Atualiza os valores das regiões no novo estado
             new_board._show_board_()
             #return NuruominoState(new_board)
             #print(f"State ID: {sucessor.id}\n")
@@ -724,7 +743,8 @@ class Nuruomino(Problem):
         if state is None:
             return False
 
-        current_regions = state.board.value_regions()
+        #current_regions = state.board.value_regions()
+        current_regions = state.region_values
 
         #Isto aqui é usando as funções do tabuleiro
         # for region in self.regions.keys():
@@ -912,11 +932,13 @@ if __name__ == "__main__":
             board.place_piece_dimension_4(region + 1)
     board.region_values = board.value_regions()
     
-    print("As de dimensão 4 já foram")
-    # #print(board.all_possibilities(2))
-    board._show_board_end_()
+    # print("As de dimensão 4 já foram")
+    # # #print(board.all_possibilities(2))
+    # board._show_board_end_()
+    # print("VER O X")
+    # board._show_board_()
     
-    problem = Nuruomino(board)
+    #problem = Nuruomino(board)
 
     # try:
     #     solution = depth_first_tree_search(problem)
@@ -928,13 +950,13 @@ if __name__ == "__main__":
     #     print("encontrada\n")
     #     solution.state.board._show_board_()
 
-    solution = depth_first_graph_search(problem)
+    #solution = depth_first_graph_search(problem)
     # # Mostra o resultado
-    if solution:
-        print("encontrada\n")
-        solution.state.board._show_board_end_()
-    else:
-        print("Nenhuma solução encontrada")
+    #if solution:
+    #     print("encontrada\n")
+    #     solution.state.board._show_board_end_()
+    # else:
+    #     print("Nenhuma solução encontrada")
 
     #TEST-02.TXT TROUBLESHOOTING
     # board = Board.parse_instance()
@@ -972,5 +994,14 @@ if __name__ == "__main__":
     # board._show_board_()
     # #print("DEFINITIVAMENTE PODE SER COLOCADA")
     # board.can_place_specific((('X', '1'), ('1', '1'), ('X', '1')), 2, 3, T_piece.id)
+
+
+#_______DEBUG teste 3
+# print("Celas da região 4: ")
+# cells = board.region_cells(4)
+# for cell in cells:
+#     print(f"({cell.row}, {cell.col})")
+#     board.can_place_specific((('X', 1, 'X'), (1, 1, 1)), cell.row, cell.col, 'T')
+
 
 

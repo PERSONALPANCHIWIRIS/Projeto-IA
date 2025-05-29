@@ -314,6 +314,14 @@ class Board:
                     print(str(cell.value()) + "\t", end="")
             print("\n", end="")
 
+    @staticmethod
+    def get_anchor(variation):
+        for i, row in enumerate(variation):
+            for j, val in enumerate(row):
+                if val == '1':
+                    return i, j
+        return 0, 0
+
     #Verifica se é possível colocar uma peça no tabuleiro
     #Pode ser usada, ou a inferior
     #ESTA RETORNA A VARIAÇÃO QUE PODE SER COLOCADA
@@ -329,11 +337,12 @@ class Board:
 
         if self.region_values.get(region, 0) != 0:
             return False #Já existe uma peça nesta região
+        anchor_row, anchor_col = self.get_anchor(variation)
         
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
-                row = start_row + i
-                col = start_col + j
+                row = start_row + i - anchor_row
+                col = start_col + j - anchor_col
 
                 if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
                     return False #fora do tabuleiro
@@ -358,11 +367,12 @@ class Board:
     def place_specific(self, variation, start_row, start_col, piece_value):
         cell_region = self.cells[start_row][start_col].region
         self.region_values[cell_region] = piece_value #Atualiza o valor da região
+        anchor_row, anchor_col = self.get_anchor(variation)
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
                 if value == '1' or value == 'X': #Aqui o X determina lugares que não podem ser ocupados (criariamos uma peça 2x2)
-                    row = start_row + i
-                    col = start_col + j
+                    row = start_row + i - anchor_row
+                    col = start_col + j - anchor_col
                     if value == '1': #Parece que se temos carateres e inteiros num array, o numpy transforma tudo a carater
                         self.cells[row][col].piece = piece_value
                     elif value == 'X':
@@ -599,9 +609,9 @@ if __name__ == "__main__":
     #print(f"problem.h is {problem.h} (type: {type(problem.h)})")
     node = Node(problem.initial)
     print(f"problem.h is {node.state} (type: {type(node.state)})") 
-    #solution = depth_first_graph_search(problem)
+    solution = depth_first_graph_search(problem)
     #solution = astar_search(problem,problem.h(node),True)
-    solution = astar_search(problem,problem.h(node),True)
+    #solution = astar_search(problem,problem.h(node),True)
     #solution = astar_search(problem,True)
     #solution = uniform_cost_search(problem,True)
     # Mostra o resultado
@@ -610,3 +620,18 @@ if __name__ == "__main__":
         print("\n", end="")
     else:
         print("Nenhuma solução encontrada")
+
+    #TEST A*
+    # problem = Nuruomino(board)
+    # # #print(f"problem.h is {problem.h} (type: {type(problem.h)})")
+    # stateinit =NuruominoState(board)
+    # node = Node(stateinit)
+    # # #print(f"problem.h is {node.state} (type: {type(node.state)})") 
+    # #solution = depth_first_graph_search(problem)
+    # solution = astar_search(problem,problem.h(node),True)
+    # if solution:
+    #     solution.state.board._show_board_end_()
+    #     print("\n", end="")
+    # else:
+    #     print("Nenhuma solução encontrada")
+    #     board._show_board_()
