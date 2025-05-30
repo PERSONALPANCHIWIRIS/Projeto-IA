@@ -1,6 +1,10 @@
-# nuruomino_optimized.py: Versão otimizada do projeto Nuruomino
-# Grupo 73: 109625 Francisco Pestana, 105953 Gonçalo Simplício
+# nuruomino.py: Template para implementação do projeto de Inteligência Artificial 2024/2025.
+# Devem alterar as classes e funções neste ficheiro de acordo com as instruções do enunciado.
+# Além das funções e classes sugeridas, podem acrescentar outras que considerem pertinentes.
 
+# Grupo 73:
+# 109625 Francisco Pestana
+# 105953 Gonçalo Simplício
 from sys import stdin
 from search import *
 import numpy as np
