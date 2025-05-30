@@ -273,7 +273,11 @@ class Board:
                             self.cells[row][col].piece = piece_value
                         elif value == 'X':
                             self.cells[row][col].piece = 'X'
-                            self.cells[row][col].blocked_region = self.cells[row][col].region
+                            self.cells[row][col].blocked_region = (
+                            self.cells[row][col].region
+                            if self.cells[row][col].region is not None
+                            else self.cells[row][col].blocked_region
+                            ) 
                             self.cells[row][col].region = None
 
     def are_pieces_connected(self):
@@ -335,7 +339,7 @@ class Board:
                 if cell.piece is not None:
                     piece_found = cell.piece
                     break
-            region_values[region] = piece_found if piece_found is not None else 0
+            region_values[region] = piece_found if piece_found is not None and piece_found != 'X' else 0
         return region_values
 
     def copy(self):
