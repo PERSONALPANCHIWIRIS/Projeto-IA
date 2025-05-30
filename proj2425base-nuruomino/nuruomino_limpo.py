@@ -585,7 +585,7 @@ class Nuruomino(Problem):
                         new_board.get_value(i+1, j),
                         new_board.get_value(i+1, j+1)
                     ]
-                    # conta todas as células “ocupadas” (peça ≠ None e ≠ 'X')
+                    # conta todas as células “ocupadas” (peça diferente de None e diferente de 'X')
                     if sum(1 for v in square if v in ['L','I','T','S']) == 4:
                         return None
                     
@@ -664,7 +664,7 @@ if __name__ == "__main__":
     # Mostra o resultado
     if solution:
         solution.state.board._show_board_end_()
-        print("\n", end="")
+        #print("\n", end="")
     else:
         print("Nenhuma solução encontrada")
 

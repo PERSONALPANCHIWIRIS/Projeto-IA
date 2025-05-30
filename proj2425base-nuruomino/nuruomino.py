@@ -979,14 +979,14 @@ if __name__ == "__main__":
 
     #DEVEMOS EVENTUALMENTE TAMBEM POR CADA ITERAÇÃO/AÇÃO VERIFICAR SE FORAM CRIADOS ESPAÇOS 2x2
     #TEST DO NURUOMINO__________________________________________________________________
-    board = Board.parse_instance()
-    # # board._show_board_()
-    for region in range(board.number_of_regions()):
-        #print("Region: " + str(region + 1))
-        if board.region_size(region + 1) == 4:
-            #print("Região de dimensão 4 encontrada")
-            board.place_piece_dimension_4(region + 1)
-    # board.region_values = board.value_regions()
+    # board = Board.parse_instance()
+    # # # board._show_board_()
+    # for region in range(board.number_of_regions()):
+    #     #print("Region: " + str(region + 1))
+    #     if board.region_size(region + 1) == 4:
+    #         #print("Região de dimensão 4 encontrada")
+    #         board.place_piece_dimension_4(region + 1)
+    # # board.region_values = board.value_regions()
     
     # print("As de dimensão 4 já foram")
     # # # #print(board.all_possibilities(2))
@@ -994,7 +994,7 @@ if __name__ == "__main__":
     # print("VER O X")
     # board._show_board_()
     
-    problem = Nuruomino(board)
+    #problem = Nuruomino(board)
 
     # try:
     #     solution = depth_first_tree_search(problem)
@@ -1006,13 +1006,13 @@ if __name__ == "__main__":
     #     print("encontrada\n")
     #     solution.state.board._show_board_()
 
-    solution = depth_first_graph_search(problem)
-    # Mostra o resultado
-    if solution:
-        print("encontrada\n")
-        solution.state.board._show_board_end_()
-    else:
-        print("Nenhuma solução encontrada")
+    # solution = depth_first_graph_search(problem)
+    # # Mostra o resultado
+    # if solution:
+    #     print("encontrada\n")
+    #     solution.state.board._show_board_end_()
+    # else:
+    #     print("Nenhuma solução encontrada")
 
     #TEST-02.TXT TROUBLESHOOTING
     # board = Board.parse_instance()
@@ -1060,79 +1060,79 @@ if __name__ == "__main__":
 #     board.can_place_specific((('X', 1, 'X'), (1, 1, 1)), cell.row, cell.col, 'T')
 
 #_____________________DEBUG teste 4
-    # board = Board.parse_instance()
-    # print("Number of regions: " + str(board.number_of_regions()))
-    # print("Peça região 1")
-    # board.all_possibilities(1)
-    # board.place_specific((('1', '1', '1', '1'),), 0, 0, 'I')
-    # board._show_board_end_()
-    # print("Peça região 2")
-    # board.all_possibilities(2)
-    # board.place_specific((('1', '1'), ('X', '1'), ('0', '1')), 0, 4, 'L')
-    # board._show_board_end_()
-    # print("Peça região 3")
-    # board.all_possibilities(3)
-    # board.place_specific((('1', '1', '1', '1'),), 0, 6, 'I')
-    # board._show_board_end_()
-    # print("Peça região 4")
-    # board.all_possibilities(4)
-    # board.place_specific((('X', '1'), ('1', '1'), ('1', 'X')), 1, 1, 'S')
-    # board._show_board_end_()
-    # print("Peça região 5")
-    # board.all_possibilities(5)
-    # board.place_specific((('1',), ('1',), ('1',), ('1',)), 6, 1, 'I')
-    # board._show_board_end_()
-    # print("Peça região 6")
-    # board.all_possibilities(6)
-    # board.place_specific((('1', 'X'), ('1', '1'), ('X', '1')), 1, 3, 'S')
-    # board._show_board_end_()
-    # print("Peça região 7")
-    # board.all_possibilities(7)
-    # board.place_specific((('1',), ('1',), ('1',), ('1',)), 3, 6, 'I')
-    # board._show_board_end_()
-    # print("Peça região 8")
-    # board.all_possibilities(8)
-    # board.place_specific((('1', '0'), ('1', 'X'), ('1', '1')), 1, 7, 'L')
-    # board._show_board_end_()
-    # print("Peça região 9")
-    # board.all_possibilities(9)
-    # board.place_specific((('1',), ('1',), ('1',), ('1',)), 2, 9, 'I')
-    # board._show_board_end_()
-    # print("Peça região 10")
-    # board.all_possibilities(10)
-    # board.place_specific((('1',), ('1',), ('1',), ('1',)), 5, 4, 'I')
-    # board._show_board_end_()
-    # print("Peça região 11")
-    # board.all_possibilities(11)
-    # board.place_specific((('1', '0'), ('1', 'X'), ('1', '1')), 4, 2, 'L')
-    # board._show_board_end_()
-    # print("Peça região 12")
-    # board.all_possibilities(12)
-    # board.place_specific((('X', '1', '1'), ('1', '1', 'X')), 7, 6, 'S')
-    # board._show_board_end_()
-    # print("Peça região 13")
-    # board.all_possibilities(13)
-    # board.place_specific((('1', '1', '1', '1'),), 9, 6, 'I')
-    # board._show_board_end_()
-    # board.are_pieces_connected()
-    # for i in range(board.rows - 1):
-    #     for j in range(board.columns - 1):
-    #         square = [
-    #             board.get_value(i, j),
-    #             board.get_value(i, j+1),
-    #             board.get_value(i+1, j),
-    #             board.get_value(i+1, j+1)
-    #         ]
-    #         # conta todas as células “ocupadas” (peça ≠ None e ≠ 'X')
-    #         if sum(1 for v in square if v in ['L','I','T','S']) == 4:
-    #             print("Falhou o 2x2")
+    board = Board.parse_instance()
+    print("Number of regions: " + str(board.number_of_regions()))
+    print("Peça região 1")
+    board.all_possibilities(1)
+    board.place_specific((('1', '1', '1', '1'),), 0, 0, 'I')
+    board._show_board_end_()
+    print("Peça região 2")
+    board.all_possibilities(2)
+    board.place_specific((('1', '1'), ('X', '1'), ('0', '1')), 0, 4, 'L')
+    board._show_board_end_()
+    print("Peça região 3")
+    board.all_possibilities(3)
+    board.place_specific((('1', '1', '1', '1'),), 0, 6, 'I')
+    board._show_board_end_()
+    print("Peça região 4")
+    board.all_possibilities(4)
+    board.place_specific((('X', '1'), ('1', '1'), ('1', 'X')), 1, 1, 'S')
+    board._show_board_end_()
+    print("Peça região 5")
+    board.all_possibilities(5)
+    board.place_specific((('1',), ('1',), ('1',), ('1',)), 6, 1, 'I')
+    board._show_board_end_()
+    print("Peça região 6")
+    board.all_possibilities(6)
+    board.place_specific((('1', 'X'), ('1', '1'), ('X', '1')), 1, 3, 'S')
+    board._show_board_end_()
+    print("Peça região 7")
+    board.all_possibilities(7)
+    board.place_specific((('1',), ('1',), ('1',), ('1',)), 3, 6, 'I')
+    board._show_board_end_()
+    print("Peça região 8")
+    board.all_possibilities(8)
+    board.place_specific((('1', '0'), ('1', 'X'), ('1', '1')), 1, 7, 'L')
+    board._show_board_end_()
+    print("Peça região 9")
+    board.all_possibilities(9)
+    board.place_specific((('1',), ('1',), ('1',), ('1',)), 2, 9, 'I')
+    board._show_board_end_()
+    print("Peça região 10")
+    board.all_possibilities(10)
+    board.place_specific((('1',), ('1',), ('1',), ('1',)), 5, 4, 'I')
+    board._show_board_end_()
+    print("Peça região 11")
+    board.all_possibilities(11)
+    board.place_specific((('1', '0'), ('1', 'X'), ('1', '1')), 4, 2, 'L')
+    board._show_board_end_()
+    print("Peça região 12")
+    board.all_possibilities(12)
+    board.place_specific((('X', '1', '1'), ('1', '1', 'X')), 7, 6, 'S')
+    board._show_board_end_()
+    print("Peça região 13")
+    board.all_possibilities(13)
+    board.place_specific((('1', '1', '1', '1'),), 9, 6, 'I')
+    board._show_board_end_()
+    board.are_pieces_connected()
+    for i in range(board.rows - 1):
+        for j in range(board.columns - 1):
+            square = [
+                board.get_value(i, j),
+                board.get_value(i, j+1),
+                board.get_value(i+1, j),
+                board.get_value(i+1, j+1)
+            ]
+            # conta todas as células “ocupadas” (peça ≠ None e ≠ 'X')
+            if sum(1 for v in square if v in ['L','I','T','S']) == 4:
+                print("Falhou o 2x2")
 
-    # current_regions = board.value_regions()
-    # for region, value in current_regions.items():
-    #         if value == 0:
-    #             print("FALSOOOOO 1")
+    current_regions = board.value_regions()
+    for region, value in current_regions.items():
+            if value == 0:
+                print("FALSOOOOO 1")
                 
-    # print("Todas as regiões preenchidas corretamente")
+    print("Todas as regiões preenchidas corretamente")
     
 
     
