@@ -266,6 +266,8 @@ class Board:
             all_good = False
             for row, col in piece_positions:
                 adjacent_values = self.adjacent_values_cell(row, col)
+                if not adjacent_values:
+                    pass
                 for val in adjacent_values:
                     if val in ['L', 'I', 'T', 'S'] and val != piece_value:
                         # print(f"Piece value {piece_value} and val: {val}")
@@ -274,9 +276,11 @@ class Board:
                         break
                 if all_good:
                     break
-                print("FOI AQUI")
+                #print("FOI AQUI")
+            if not all_good:
                 return False
-            return True
+            
+            #return True
             # if self.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']:
             #     #has_adjacent_piece = True
             #     neighbour_count = neighbour_count + 1
