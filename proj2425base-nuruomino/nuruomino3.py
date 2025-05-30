@@ -8,6 +8,7 @@
 from sys import stdin
 from search import *
 import numpy as np
+from collections import deque
 
 PIECES = {
     'L': [[0, 1],
@@ -242,7 +243,6 @@ class Board:
                     if cell.piece is not None and cell.piece != 'X':
                         return False
             
-        #Não poder uma peça igual adjacente
         for row, col in piece_positions:
             adjacent_values = self.adjacent_values_cell(row, col)
             for val in adjacent_values:
@@ -252,35 +252,16 @@ class Board:
                     return False
 
         # Verificar adjacências uma vez só
-        forced_adjancency = True
+        # has_adjacent_piece = False #So TRUE se tem os vizinhos todos preenchidos
         # neighbour_count = 0
-        adjacent_regions = self.adjacent_regions(region)
+        # adjacent_region_values = self.adjacent_regions(region)
         
-        # Verificar se região vizinha tem peças
-        for adj_region in adjacent_regions:
-            if self.region_values.get(adj_region, 0) not in ['L', 'I', 'T', 'S']:
-                forced_adjancency = False
-
-        if forced_adjancency:
-            print("Tenho adjacentes")
-            all_good = False
-            for row, col in piece_positions:
-                adjacent_values = self.adjacent_values_cell(row, col)
-                for val in adjacent_values:
-                    if val in ['L', 'I', 'T', 'S'] and val != piece_value:
-                        # print(f"Piece value {piece_value} and val: {val}")
-                        #print("E não sou eu")
-                        all_good = True
-                        break
-                if all_good:
-                    break
-                print("FOI AQUI")
-                return False
-            return True
-            # if self.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']:
-            #     #has_adjacent_piece = True
-            #     neighbour_count = neighbour_count + 1
-        #has_adjacent_piece = (neighbour_count == len(adjacent_region_values))
+        # # Verificar se região vizinha tem peças
+        # for adj_region in adjacent_region_values:
+        #     if self.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']:
+        #         #has_adjacent_piece = True
+        #         neighbour_count = neighbour_count + 1
+        # has_adjacent_piece = (neighbour_count == len(adjacent_region_values))
                 
 
         # # Se há peças vizinhas na região, verificar se toca
@@ -486,24 +467,24 @@ class Nuruomino(Problem):
     def actions(self, state: NuruominoState):
         if state is None:
             return []
-        print(f"O meu ID: {state.id}")
+        #print(f"O meu ID: {state.id}")
         
         empty_regions = state.get_empty_regions()
-        for empty_region in empty_regions:
-            print(f"Region thats empty: {empty_region}")
+        # for empty_region in empty_regions:
+        #     #print(f"Region thats empty: {empty_region}")
         if not empty_regions:
             return []
         
         # Escolher a região com menos possibilidades (MRV - Most Constraining Variable)
         region = min(empty_regions, key=lambda r: len(self.possibilities.get(r, [])))
-        print(f"EASIER REGION: {region}")
-        print(f"Porque tem : {len(self.possibilities.get(region, []))} possibilidades")
+        # print(f"EASIER REGION: {region}")
+        # print(f"Porque tem : {len(self.possibilities.get(region, []))} possibilidades")
         
         actions = []
         for piece_id, variation, (row, col) in self.possibilities.get(region, []):
-            print(f"Action: {piece_id}, {variation}, {row}, {col}")
+            #print(f"Action: {piece_id}, {variation}, {row}, {col}")
             if state.board.can_place_specific(variation, row, col, piece_id):
-                print(f"Action: {piece_id}, {variation}, {row}, {col}")
+                #print(f"Action: {piece_id}, {variation}, {row}, {col}")
                 actions.append((Piece(piece_id), variation, row, col))
         
 
@@ -516,24 +497,18 @@ class Nuruomino(Problem):
 
         if new_board.can_place_specific(variation, row, col, piece.id):
             new_board.place_specific(variation, row, col, piece.id)
-            print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
+            #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
             #new_board._show_board_end_()
             
             # Verificação rápida de 2x2
             if new_board.has_2x2_piece_block():
-                print("Criamos um 2x2 se formos colocar")
+                #print("Criamos um 2x2 se formos colocar")
                 return None
                     
-            # region = new_board.get_region(row, col)
-            # adjacent_regions = new_board.adjacent_regions(region)
-            # for adj_region in adjacent_regions:
-            #     if all(new_board.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']):
-
-
-            print(f"We placed piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
+            #print(f"We placed piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
             successor = NuruominoState(new_board)
-            print(f"And created: {successor.id}")
-            new_board._show_board_end_()
+            #print(f"And created: {successor.id}")
+            #new_board._show_board_end_()
             
             
             return successor
@@ -542,24 +517,24 @@ class Nuruomino(Problem):
 
     def goal_test(self, state: NuruominoState):
         if state is None:
-            print("Action deixou de ser valida")
+            #print("Action deixou de ser valida")
             return False
 
         # Verificar se todas as regiões estão preenchidas
         current_regions = state.board.value_regions()
         for region, value in current_regions.items():
             if value == 0:
-                print("Ha regiões vazias")
+                #print("Ha regiões vazias")
                 return False
 
         # Verificar conectividade das peças
         if not state.board.are_pieces_connected():
-            print("Não estão ligadas")
+            #print("Não estão ligadas")
             return False
         
         # Verificação final de 2x2
         if state.board.has_2x2_piece_block():
-            print("Criou-se um 2x2")
+            #print("Criou-se um 2x2")
             return False
 
         return True
