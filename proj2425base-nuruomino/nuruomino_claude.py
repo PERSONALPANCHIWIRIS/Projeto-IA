@@ -8,7 +8,6 @@
 from sys import stdin
 from search import *
 import numpy as np
-from collections import deque
 
 PIECES = {
     'L': [[0, 1],
@@ -467,24 +466,24 @@ class Nuruomino(Problem):
     def actions(self, state: NuruominoState):
         if state is None:
             return []
-        #print(f"O meu ID: {state.id}")
+        print(f"O meu ID: {state.id}")
         
         empty_regions = state.get_empty_regions()
-        # for empty_region in empty_regions:
-        #     #print(f"Region thats empty: {empty_region}")
+        for empty_region in empty_regions:
+            print(f"Region thats empty: {empty_region}")
         if not empty_regions:
             return []
         
         # Escolher a região com menos possibilidades (MRV - Most Constraining Variable)
         region = min(empty_regions, key=lambda r: len(self.possibilities.get(r, [])))
-        # print(f"EASIER REGION: {region}")
-        # print(f"Porque tem : {len(self.possibilities.get(region, []))} possibilidades")
+        print(f"EASIER REGION: {region}")
+        print(f"Porque tem : {len(self.possibilities.get(region, []))} possibilidades")
         
         actions = []
         for piece_id, variation, (row, col) in self.possibilities.get(region, []):
-            #print(f"Action: {piece_id}, {variation}, {row}, {col}")
+            print(f"Action: {piece_id}, {variation}, {row}, {col}")
             if state.board.can_place_specific(variation, row, col, piece_id):
-                #print(f"Action: {piece_id}, {variation}, {row}, {col}")
+                print(f"Action: {piece_id}, {variation}, {row}, {col}")
                 actions.append((Piece(piece_id), variation, row, col))
         
 
@@ -497,18 +496,18 @@ class Nuruomino(Problem):
 
         if new_board.can_place_specific(variation, row, col, piece.id):
             new_board.place_specific(variation, row, col, piece.id)
-            #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
+            print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
             #new_board._show_board_end_()
             
             # Verificação rápida de 2x2
             if new_board.has_2x2_piece_block():
-                #print("Criamos um 2x2 se formos colocar")
+                print("Criamos um 2x2 se formos colocar")
                 return None
                     
-            #print(f"We placed piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
+            print(f"We placed piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
             successor = NuruominoState(new_board)
-            #print(f"And created: {successor.id}")
-            #new_board._show_board_end_()
+            print(f"And created: {successor.id}")
+            new_board._show_board_end_()
             
             
             return successor
@@ -517,24 +516,24 @@ class Nuruomino(Problem):
 
     def goal_test(self, state: NuruominoState):
         if state is None:
-            #print("Action deixou de ser valida")
+            print("Action deixou de ser valida")
             return False
 
         # Verificar se todas as regiões estão preenchidas
         current_regions = state.board.value_regions()
         for region, value in current_regions.items():
             if value == 0:
-                #print("Ha regiões vazias")
+                print("Ha regiões vazias")
                 return False
 
         # Verificar conectividade das peças
         if not state.board.are_pieces_connected():
-            #print("Não estão ligadas")
+            print("Não estão ligadas")
             return False
         
         # Verificação final de 2x2
         if state.board.has_2x2_piece_block():
-            #print("Criou-se um 2x2")
+            print("Criou-se um 2x2")
             return False
 
         return True
