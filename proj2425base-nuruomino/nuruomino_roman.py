@@ -801,7 +801,12 @@ if __name__ == "__main__":
     
     # Usar A* como algoritmo principal (melhor para este tipo de problema)
     #solution = astar_search(problem)
-    solution = depth_first_graph_search(problem)
+    #solution = depth_first_graph_search(problem)
+    #solution = breadth_first_tree_search(problem)
+    #solution = depth_first_tree_search(problem)
+    #solution = breadth_first_graph_search(problem)
+    solution = greedy_search(problem)
+    # solution = hill_climbing(problem)
     
     # if solution:
     #     #print("Solução encontrada:")
