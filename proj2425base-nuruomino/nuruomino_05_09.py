@@ -562,6 +562,8 @@ class Nuruomino(Problem):
         return num_empty + 0.1 * constraint_penalty
 
 if __name__ == "__main__":
+    import time
+    start_time = time.time()
     board = Board.parse_instance()
 
     # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
@@ -604,5 +606,8 @@ if __name__ == "__main__":
     if solution:
         #print("Solução encontrada:")
         solution.state.board._show_board_end_()
+        end_time = time.time()
+        print("\n")
+        print(f"Test completed in {end_time - start_time:.2f} seconds")
     else:
         print("Nenhuma solução encontrada")

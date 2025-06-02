@@ -10,14 +10,14 @@ from search import *
 import numpy as np
 
 PIECES = {
-    'L': [[0, 1],
-          ['X', 1],
-          [1, 1]],
-    'T': [[1, 1, 1],
-          ['X', 1, 'X']],
+    'L': [['0', '1'],
+          ['X', '1'],
+          ['1', '1']],
+    'T': [['1', '1', '1'],
+          ['X', '1', 'X']],
     'I': [['1', '1', '1', '1']],
-    'S': [['X', 1, 1],
-          [1, 1, 'X']],
+    'S': [['X', '1', '1'],
+          ['1', '1', 'X']],
 }
 
 class Piece:
@@ -77,6 +77,9 @@ class NuruominoState:
 
     def __lt__(self, other):
         return self.id < other.id
+        # if isinstance(other, NuruominoState):
+        #     return self.id < other.id
+        # return NotImplemented
     
     def get_empty_regions(self):
         if self._empty_regions_cache is None:
@@ -279,7 +282,8 @@ class Board:
         
         # Se há exatamente uma região adjacente com peça, forçar adjacência
         #JUntei com a de baixo, mesma logica, aplica para qualquer dos dois casos
-        if len(regions_with_pieces) == 1 or (len(regions_with_pieces) == len(adjacent_regions) and regions_with_pieces):
+        #if len(regions_with_pieces) == 1 or (len(regions_with_pieces) == len(adjacent_regions) and regions_with_pieces):
+        if (len(regions_with_pieces) == len(adjacent_regions) and regions_with_pieces):
             # Deve tocar na peça da região adjacente obrigatoriamente
             touches_adjacent_piece = False
             for row, col in piece_positions:
@@ -599,11 +603,12 @@ class Nuruomino(Problem):
     def actions(self, state: NuruominoState):
         if state is None:
             return []
-        print(f"O meu ID: {state.id}")
+        #
+        # print(f"O meu ID: {state.id}")
         
         empty_regions = state.get_empty_regions()
-        for empty_region in empty_regions:
-            print(f"Region thats empty: {empty_region}")
+        # for empty_region in empty_regions:
+        #     #print(f"Region thats empty: {empty_region}")
         if not empty_regions:
             return []
         
@@ -621,8 +626,8 @@ class Nuruomino(Problem):
         region = min(empty_regions, key=region_priority)
         # Escolher a região com menos possibilidades (MRV - Most Constraining Variable)
         #region = min(empty_regions, key=lambda r: len(self.possibilities.get(r, [])))
-        print(f"EASIER REGION: {region}")
-        print(f"Porque tem : {len(self.possibilities.get(region, []))} possibilidades")
+        #print(f"EASIER REGION: {region}")
+        #print(f"Porque tem : {len(self.possibilities.get(region, []))} possibilidades")
         
         actions = []
         # for piece_id, variation, (row, col) in self.possibilities.get(region, []):
@@ -650,33 +655,33 @@ class Nuruomino(Problem):
     def result(self, state: NuruominoState, action):
         piece, variation, row, col = action
         new_board = state.board.copy()
-        print(f"O meu ID: {state.id}")
+        #print(f"O meu ID: {state.id}")
 
-        #if new_board.can_place_specific(variation, row, col, piece.id):
-        new_board.place_specific(variation, row, col, piece.id)
-        print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
-        new_board._show_board_end_()
+        if new_board.can_place_specific(variation, row, col, piece.id):
+            new_board.place_specific(variation, row, col, piece.id)
+            #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
+            #new_board._show_board_end_()
+                
+            # Verificação rápida de 2x2
+            if new_board.has_2x2_piece_block():
+                #print("Criamos um 2x2 se formos colocar")
+                return None
+                        
+            # region = new_board.get_region(row, col)
+            # adjacent_regions = new_board.adjacent_regions(region)
+            # for adj_region in adjacent_regions:
+            #     if all(new_board.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']):
+
+
+            #print(f"We placed piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
+            successor = NuruominoState(new_board)
+            #print(f"And created: {successor.id}")
+            #new_board._show_board_end_()
             
-        # Verificação rápida de 2x2
-        if new_board.has_2x2_piece_block():
-            print("Criamos um 2x2 se formos colocar")
-            return None
-                    
-        # region = new_board.get_region(row, col)
-        # adjacent_regions = new_board.adjacent_regions(region)
-        # for adj_region in adjacent_regions:
-        #     if all(new_board.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']):
-
-
-        print(f"We placed piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
-        successor = NuruominoState(new_board)
-        print(f"And created: {successor.id}")
-        new_board._show_board_end_()
+            
+            return successor
         
-        
-        return successor
-        
-        #return None
+        return None
 
     def goal_test(self, state: NuruominoState):
         if state is None:
@@ -692,12 +697,12 @@ class Nuruomino(Problem):
 
         # Verificar conectividade das peças
         if not state.board.are_pieces_connected():
-            print("Não estão ligadas")
+            #print("Não estão ligadas")
             return False
         
         # Verificação final de 2x2
         if state.board.has_2x2_piece_block():
-            print("Criou-se um 2x2")
+            #print("Criou-se um 2x2")
             return False
 
         return True
@@ -757,6 +762,8 @@ class Nuruomino(Problem):
         return num_empty + heuristic_value
 
 if __name__ == "__main__":
+    import time
+    start_time = time.time()
     board = Board.parse_instance()
 
     # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
@@ -793,8 +800,8 @@ if __name__ == "__main__":
     problem = Nuruomino(board)
     
     # Usar A* como algoritmo principal (melhor para este tipo de problema)
-    solution = astar_search(problem)
-    #solution = depth_first_graph_search(problem)
+    #solution = astar_search(problem)
+    solution = depth_first_graph_search(problem)
     
     # if solution:
     #     #print("Solução encontrada:")
@@ -804,11 +811,17 @@ if __name__ == "__main__":
 
     if not solution:
         # Fallback para busca em profundidade se A* falhar
-        solution = depth_first_graph_search(problem)
+        #print("A* não encontrou solução, tentando busca em profundidade...")
+        solution = astar_search(problem)
+        #solution = depth_first_graph_search(problem)
     
     if solution:
         print("\n")
         print("Solução encontrada:")
         solution.state.board._show_board_end_()
+        end_time = time.time()
+        print("\n")
+        print(f"Test completed in {end_time - start_time:.2f} seconds")
+
     else:
         print("Nenhuma solução encontrada")
