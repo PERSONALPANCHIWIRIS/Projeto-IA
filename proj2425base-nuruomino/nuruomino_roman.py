@@ -762,8 +762,8 @@ class Nuruomino(Problem):
         return num_empty + heuristic_value
 
 if __name__ == "__main__":
-    import time
-    start_time = time.time()
+    # import time
+    # start_time = time.time()
     board = Board.parse_instance()
 
     # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
@@ -801,11 +801,11 @@ if __name__ == "__main__":
     
     # Usar A* como algoritmo principal (melhor para este tipo de problema)
     #solution = astar_search(problem)
-    #solution = depth_first_graph_search(problem)
+    solution = depth_first_graph_search(problem)
     #solution = breadth_first_tree_search(problem)
     #solution = depth_first_tree_search(problem)
     #solution = breadth_first_graph_search(problem)
-    solution = greedy_search(problem)
+    #solution = greedy_search(problem)
     # solution = hill_climbing(problem)
     
     # if solution:
@@ -821,12 +821,12 @@ if __name__ == "__main__":
         #solution = depth_first_graph_search(problem)
     
     if solution:
-        print("\n")
-        print("Solução encontrada:")
+        # print("\n")
+        # print("Solução encontrada:")
         solution.state.board._show_board_end_()
-        end_time = time.time()
-        print("\n")
-        print(f"Test completed in {end_time - start_time:.2f} seconds")
+        # end_time = time.time()
+        # print("\n")
+        # print(f"Test completed in {end_time - start_time:.2f} seconds")
 
     else:
         print("Nenhuma solução encontrada")
