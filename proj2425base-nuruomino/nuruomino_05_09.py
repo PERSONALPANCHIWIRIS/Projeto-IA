@@ -8,7 +8,7 @@
 from sys import stdin
 from search import *
 import numpy as np
-from collections import deque, defaultdict
+from collections import deque
 
 PIECES = {
     'L': [[0, 1],
@@ -73,8 +73,6 @@ class NuruominoState:
         # Cache para acelerar verificações
         self._adjacency_cache = {}
         self._empty_regions_cache = None
-        # Cache para conectividade de peças
-        self._connectivity_score_cache = {}
 
     def __lt__(self, other):
         return self.id < other.id
@@ -83,21 +81,6 @@ class NuruominoState:
         if self._empty_regions_cache is None:
             self._empty_regions_cache = [region for region, value in self.region_values.items() if value == 0]
         return self._empty_regions_cache
-    
-    def get_connectivity_score(self, region):
-        """Calcula um score de conectividade para uma região baseado em peças adjacentes"""
-        if region in self._connectivity_score_cache:
-            return self._connectivity_score_cache[region]
-        
-        adjacent_regions = self.board.adjacent_regions(region)
-        connectivity_score = 0
-        
-        for adj_region in adjacent_regions:
-            if self.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']:
-                connectivity_score += 1
-        
-        self._connectivity_score_cache[region] = connectivity_score
-        return connectivity_score
 
 class Cell:
     def __init__(self, row, col, region):
@@ -118,11 +101,11 @@ class Board:
         #print(f"Board initialized with {self.rows} rows and {self.columns} columns")
         self.region_values = {}
         
+        
         # Caches para otimização
         self._region_cells_cache = {}
         self._adjacent_regions_cache = {}
         self._region_sizes_cache = {}
-        self._region_piece_adjacency_cache = {}
         
         # Pré-computar informações das regiões
         self._precompute_region_info()
@@ -238,6 +221,7 @@ class Board:
             for j, value in enumerate(part):
                 row = start_row + i - anchor_row
                 col = start_col + j - anchor_col
+                
 
                 if value == '1':
                     # row = start_row + i - anchor_row
@@ -252,56 +236,57 @@ class Board:
                     
                     piece_positions.append((row, col))
 
-                elif value == 'X' and (0 <= row < self.rows) and (0 <= col < self.columns):
+                elif value == 'X' and (row >= 0 and row < self.rows) and (col >= 0 and col < self.columns): #So consideramos o X se afeta o tabuleiro, caso contrario nem computa
+                    # row = start_row + i - anchor_row
+                    # col = start_col + j - anchor_col
                     cell = self.cells[row][col]
                     if cell.piece is not None and cell.piece != 'X':
                         return False
             
-        # Verificar se peças iguais são adjacentes (proibido)
         for row, col in piece_positions:
             adjacent_values = self.adjacent_values_cell(row, col)
             for val in adjacent_values:
-                if val == piece_value:
+                if val in ['L', 'I', 'T', 'S'] and val == piece_value:
+                    # print(f"Piece value {piece_value} and val: {val}")
+                    #print("Sou eu")
                     return False
 
-        # OTIMIZAÇÃO: Implementação melhorada de forced adjacency
-        adjacent_regions = self.adjacent_regions(region)
-        regions_with_pieces = []
+        # Verificar adjacências uma vez só
+        # has_adjacent_piece = False #So TRUE se tem os vizinhos todos preenchidos
+        # neighbour_count = 0
+        # adjacent_region_values = self.adjacent_regions(region)
         
-        for adj_region in adjacent_regions:
-            if self.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']:
-                regions_with_pieces.append(adj_region)
-        
-        # Se há exatamente uma região adjacente com peça, forçar adjacência
-        if len(regions_with_pieces) == 1:
-            # Deve tocar na peça da região adjacente
-            touches_adjacent_piece = False
-            for row, col in piece_positions:
-                adjacent_values = self.adjacent_values_cell(row, col)
-                for val in adjacent_values:
-                    if val in ['L', 'I', 'T', 'S'] and val != piece_value:
-                        touches_adjacent_piece = True
-                        break
-                if touches_adjacent_piece:
-                    break
+        # # Verificar se região vizinha tem peças
+        # for adj_region in adjacent_region_values:
+        #     if self.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']:
+        #         #has_adjacent_piece = True
+        #         neighbour_count = neighbour_count + 1
+        # has_adjacent_piece = (neighbour_count == len(adjacent_region_values))
+                
+
+        # # Se há peças vizinhas na região, verificar se toca
+        # if has_adjacent_piece:
+        #     #print("Tenho adjacentes")
+        #     touches_piece = False
+        #     for row, col in piece_positions:
+        #         adjacent_values = self.adjacent_values_cell(row, col)
+        #         for val in adjacent_values:
+        #             if val in ['L', 'I', 'T', 'S'] and val == piece_value:
+        #                 # print(f"Piece value {piece_value} and val: {val}")
+        #                 #print("Sou eu")
+        #                 return False
+                    
+        #             if val in ['L', 'I', 'T', 'S'] and val != piece_value:
+        #                 # print(f"Piece value {piece_value} and val: {val}")
+        #                 #print("E não sou eu")
+        #                 touches_piece = True
+        #                 #break
+
+        #         # if touches_piece:
+        #         #     break
             
-            if not touches_adjacent_piece:
-                return False
-        
-        # Se todas as regiões adjacentes têm peças, deve tocar pelo menos uma
-        elif len(regions_with_pieces) == len(adjacent_regions) and regions_with_pieces:
-            touches_adjacent_piece = False
-            for row, col in piece_positions:
-                adjacent_values = self.adjacent_values_cell(row, col)
-                for val in adjacent_values:
-                    if val in ['L', 'I', 'T', 'S'] and val != piece_value:
-                        touches_adjacent_piece = True
-                        break
-                if touches_adjacent_piece:
-                    break
-            
-            if not touches_adjacent_piece:
-                return False
+        #     if not touches_piece:
+        #         return False
 
         return True
 
@@ -377,18 +362,6 @@ class Board:
                     return True
         return False
 
-    def get_connectivity_potential(self, region, piece_positions):
-        """Calcula o potencial de conectividade de uma colocação específica"""
-        connectivity_score = 0
-        
-        for row, col in piece_positions:
-            adjacent_values = self.adjacent_values_cell(row, col)
-            for val in adjacent_values:
-                if val in ['L', 'I', 'T', 'S']:
-                    connectivity_score += 1
-        
-        return connectivity_score
-
     @staticmethod
     def parse_instance():
         lines = stdin.read().strip().splitlines()
@@ -422,38 +395,6 @@ class Board:
         new_board = Board(new_cells)
         new_board.region_values = dict(self.region_values)
         return new_board
-
-    # def _show_board_end_(self):
-    #     for row in range(self.rows - 1):
-    #         for column in range(self.columns):
-    #             if column == (self.columns - 1):
-    #                 cell = self.cells[row][column]
-    #                 if cell.piece == 'X':
-    #                     print(str(cell.blocked_region), end="")
-    #                 else:
-    #                     print(str(cell.value()), end="")
-    #             else:
-    #                 cell = self.cells[row][column]
-    #                 if cell.piece == 'X':
-    #                     print(str(cell.blocked_region) + "\t", end="")
-    #                 else:
-    #                     print(str(cell.value()) + "\t", end="")
-    #         print("\n", end="")
-
-    #     row += 1
-    #     for column in range(self.columns):
-    #         if column == (self.columns - 1):
-    #             cell = self.cells[row][column]
-    #             if cell.piece == 'X':
-    #                 print(str(cell.blocked_region), end="")
-    #             else:
-    #                 print(str(cell.value()), end="")
-    #         else:
-    #             cell = self.cells[row][column]
-    #             if cell.piece == 'X':
-    #                 print(str(cell.blocked_region) + "\t", end="")
-    #             else:
-    #                 print(str(cell.value()) + "\t", end="")
 
     def _show_board_end_(self):
         for row in range(self.rows - 1):
@@ -496,63 +437,32 @@ class Nuruomino(Problem):
         
         # Pré-computar possibilidades para cada região (otimização major)
         self.possibilities = {}
-        self.connectivity_scores = {}
         self._precompute_all_possibilities()
         
-        # Ordenar regiões por dificuldade e conectividade
+        # Ordenar regiões por dificuldade (heurística de ordenação)
         self.region_order = self._compute_region_order()
 
     def _precompute_all_possibilities(self):
-        """Pré-computa todas as possibilidades para cada região com scores de conectividade"""
+        """Pré-computa todas as possibilidades para cada região"""
         pieces = [Piece(piece_id) for piece_id in ['L', 'I', 'T', 'S']]
         
         for region in range(1, self.board.number_of_regions() + 1):
             possibilities = []
-            connectivity_scores = []
             region_cells = self.board.region_cells(region)
             
             for cell in region_cells:
                 for piece in pieces:
                     for variation in piece.variations:
                         if self.board.can_place_specific(variation, cell.row, cell.col, piece.id):
-                            # Calcular posições da peça para score de conectividade
-                            anchor_row, anchor_col = self.board.get_anchor(variation)
-                            piece_positions = []
-                            
-                            for i, part in enumerate(variation):
-                                for j, value in enumerate(part):
-                                    if value == '1':
-                                        row = cell.row + i - anchor_row
-                                        col = cell.col + j - anchor_col
-                                        if 0 <= row < self.board.rows and 0 <= col < self.board.columns:
-                                            piece_positions.append((row, col))
-                            
-                            connectivity_score = self.board.get_connectivity_potential(region, piece_positions)
-                            
                             possibilities.append((piece.id, variation, (cell.row, cell.col)))
-                            connectivity_scores.append(connectivity_score)
-            
+            # for piece_id, variation, (cell.row, cell.col) in possibilities:
+            #     print(f"For region: {region} the possibilities are: {piece_id}, {variation}, {(cell.row, cell.col)} ")
             self.possibilities[region] = possibilities
-            self.connectivity_scores[region] = connectivity_scores
 
     def _compute_region_order(self):
-        """Ordena regiões priorizando menos possibilidades e maior conectividade"""
+        """Ordena regiões por dificuldade de preenchimento (menos possibilidades primeiro)"""
         regions = list(range(1, self.board.number_of_regions() + 1))
-        
-        def region_priority(region):
-            num_possibilities = len(self.possibilities.get(region, []))
-            if num_possibilities == 0:
-                return (float('inf'), 0)  # Região impossível
-            
-            # Média de conectividade das possibilidades
-            avg_connectivity = 0
-            if region in self.connectivity_scores and self.connectivity_scores[region]:
-                avg_connectivity = sum(self.connectivity_scores[region]) / len(self.connectivity_scores[region])
-            
-            # Priorizar: menos possibilidades primeiro, maior conectividade como desempate
-            return (num_possibilities, -avg_connectivity)
-        
-        return sorted(regions, key=region_priority)
+        return sorted(regions, key=lambda r: len(self.possibilities.get(r, [])))
 
     def actions(self, state: NuruominoState):
         if state is None:
@@ -565,34 +475,19 @@ class Nuruomino(Problem):
         if not empty_regions:
             return []
         
-        # Escolher região com estratégia otimizada: MRV + conectividade
-        def region_priority(region):
-            num_possibilities = len(self.possibilities.get(region, []))
-            if num_possibilities == 0:
-                return (float('inf'), 0)
-            
-            connectivity_score = state.get_connectivity_score(region)
-            
-            # Priorizar: menos possibilidades, maior conectividade
-            return (num_possibilities, -connectivity_score)
-        
-        region = min(empty_regions, key=region_priority)
-        #print(f"EASIER REGION: {region}")
-        #print(f"Porque tem : {len(self.possibilities.get(region, []))} possibilidades")
+        # Escolher a região com menos possibilidades (MRV - Most Constraining Variable)
+        region = min(empty_regions, key=lambda r: len(self.possibilities.get(r, [])))
+        # print(f"EASIER REGION: {region}")
+        # print(f"Porque tem : {len(self.possibilities.get(region, []))} possibilidades")
         
         actions = []
-        region_possibilities = self.possibilities.get(region, [])
-        region_connectivity_scores = self.connectivity_scores.get(region, [])
-        
-        # Combinar possibilidades com scores e ordenar por conectividade
-        possibility_data = list(zip(region_possibilities, region_connectivity_scores))
-        possibility_data.sort(key=lambda x: -x[1])  # Ordenar por conectividade decrescente
-        
-        for (piece_id, variation, (row, col)), connectivity_score in possibility_data:
+        for piece_id, variation, (row, col) in self.possibilities.get(region, []):
+            #print(f"Action: {piece_id}, {variation}, {row}, {col}")
             if state.board.can_place_specific(variation, row, col, piece_id):
                 #print(f"Action: {piece_id}, {variation}, {row}, {col}")
                 actions.append((Piece(piece_id), variation, row, col))
         
+
         return actions
 
     def result(self, state: NuruominoState, action):
@@ -605,11 +500,12 @@ class Nuruomino(Problem):
             #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
             #new_board._show_board_end_()
             
-            # Verificação rápida de 2x2 (early pruning)
+            # Verificação rápida de 2x2
             if new_board.has_2x2_piece_block():
                 #print("Criamos um 2x2 se formos colocar")
                 return None
-            
+                    
+            #print(f"We placed piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
             successor = NuruominoState(new_board)
             #print(f"And created: {successor.id}")
             #new_board._show_board_end_()
@@ -644,7 +540,7 @@ class Nuruomino(Problem):
         return True
 
     def h(self, node: Node):
-        """Heurística otimizada considerando possibilidades, conectividade e constraintes"""
+        """Heurística melhorada que considera múltiplos fatores"""
         state = node.state
         if state is None:
             return float('inf')
@@ -655,42 +551,26 @@ class Nuruomino(Problem):
         if num_empty == 0:
             return 0
         
-        heuristic_value = 0
-        
+        # Penalizar regiões com poucas possibilidades (mais difíceis de preencher)
+        constraint_penalty = 0
         for region in empty_regions:
             possibilities = len(self.possibilities.get(region, []))
             if possibilities == 0:
                 return float('inf')  # Estado impossível
-            
-            # Penalização por baixo número de possibilidades
-            constraint_penalty = 1.0 / possibilities
-            
-            # Bonus para alta conectividade
-            connectivity_score = state.get_connectivity_score(region)
-            connectivity_bonus = connectivity_score * 0.1
-            
-            # Penalização por isolamento (regiões sem peças adjacentes)
-            isolation_penalty = 0.2 if connectivity_score == 0 else 0
-            
-            heuristic_value += constraint_penalty + isolation_penalty - connectivity_bonus
+            constraint_penalty += 1.0 / possibilities
         
-        return num_empty + heuristic_value
+        return num_empty + 0.1 * constraint_penalty
 
 if __name__ == "__main__":
     board = Board.parse_instance()
 
-    # Pré-processamento otimizado: resolver regiões determinísticas
-    pieces = [Piece('L'), Piece('I'), Piece('T'), Piece('S')]
-    
-    # Resolver regiões de tamanho 4 (único tetramino possível)
+    # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
     for region in range(1, board.number_of_regions() + 1):
-        if board.region_size(region) == 4 and board.region_values.get(region, 0) == 0:
+        if board.region_size(region) == 4:
+            pieces = [Piece('L'), Piece('I'), Piece('T'), Piece('S')]
             region_cells = board.region_cells(region)
-            placed = False
-            
             for cell in region_cells:
-                if placed:
-                    break
+                placed = False
                 for piece in pieces:
                     variation = board.can_place_piece(piece, cell.row, cell.col)
                     if variation is not None:
@@ -717,17 +597,12 @@ if __name__ == "__main__":
     
     problem = Nuruomino(board)
     
-    # Usar A* otimizado com fallback para DFS se necessário
-    solution = astar_search(problem)
-    
-    if not solution:
-        # Fallback para busca em profundidade se A* falhar
-        solution = depth_first_graph_search(problem)
+    # Usar A* como algoritmo principal (melhor para este tipo de problema)
+    #solution = astar_search(problem)
+    solution = depth_first_graph_search(problem)
     
     if solution:
         #print("Solução encontrada:")
         solution.state.board._show_board_end_()
     else:
         print("Nenhuma solução encontrada")
-
-
