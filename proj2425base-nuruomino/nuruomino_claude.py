@@ -640,6 +640,7 @@ if __name__ == "__main__":
     # Tentar A* primeiro, depois DFS como fallback
     #solution = astar_search(problem)
     solution = depth_first_graph_search(problem)
+    #solution = astar_search(problem, h=problem.h)  # Usando heurística otimizada
     
     # if not solution:
     #     solution = depth_first_graph_search(problem)

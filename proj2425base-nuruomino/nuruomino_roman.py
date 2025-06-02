@@ -827,6 +827,7 @@ if __name__ == "__main__":
     #solution = breadth_first_graph_search(problem)
     #solution = greedy_search(problem)
     #solution = hill_climbing(problem)
+    #solution = astar_search(problem, h=problem.h)
     
     # if solution:
     #     #print("Solução encontrada:")
@@ -834,11 +835,12 @@ if __name__ == "__main__":
     # else:
     #     print("Nenhuma solução encontrada")
 
-    if not solution:
-        # Fallback para busca em profundidade se A* falhar
-        #print("A* não encontrou solução, tentando busca em profundidade...")
-        solution = astar_search(problem)
-        #solution = depth_first_graph_search(problem)
+    # if not solution:
+    #     # Fallback para busca em profundidade se A* falhar
+    #     #print("A* não encontrou solução, tentando busca em profundidade...")
+    #     #solution = astar_search(problem)
+    #     solution = astar_search(problem, h=problem.h)
+    #     #solution = depth_first_graph_search(problem)
     
     if solution:
         # print("\n")
