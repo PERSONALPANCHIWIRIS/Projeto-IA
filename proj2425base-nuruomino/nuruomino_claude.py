@@ -651,3 +651,5 @@ if __name__ == "__main__":
         print(f"\nCompleted in {end_time - start_time:.2f} seconds")
     else:
         print("Nenhuma solução encontrada")
+
+        ####AQUIIII, EXPERIMENTAR COMEÇAR COM A REGIÂO QUE MAIS POSSIBILIDADES TEM, ABRIR A ARVORE

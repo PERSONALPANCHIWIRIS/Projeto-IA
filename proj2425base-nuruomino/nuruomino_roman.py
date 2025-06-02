@@ -777,7 +777,7 @@ class Nuruomino(Problem):
             # Penalização por isolamento (regiões sem peças adjacentes)
             isolation_penalty = 0.2 if connectivity_score == 0 else 0
             
-            heuristic_value += constraint_penalty + isolation_penalty - connectivity_bonus
+            heuristic_value += (constraint_penalty + isolation_penalty - connectivity_bonus)
         
         return num_empty + heuristic_value
 
@@ -820,8 +820,8 @@ if __name__ == "__main__":
     problem = Nuruomino(board)
     
     # Usar A* como algoritmo principal (melhor para este tipo de problema)
-    #solution = astar_search(problem)
-    solution = depth_first_graph_search(problem)
+    solution = astar_search(problem)
+    #solution = depth_first_graph_search(problem)
     #solution = breadth_first_tree_search(problem)
     #solution = depth_first_tree_search(problem)
     #solution = breadth_first_graph_search(problem)
