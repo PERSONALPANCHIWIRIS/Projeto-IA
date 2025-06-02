@@ -201,6 +201,21 @@ class Board:
                 if value != 'X' and value not in neighbours:
                     neighbours.append(value)
         return neighbours
+    
+    def adjacent_regions_cell(self, row: int, col: int) -> list:
+        if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
+            return []
+        
+        directions = [(-1, 0), (0, -1), (0, 1), (1, 0)]
+        neighbours = set()
+        
+        for dr, dc in directions:
+            r, c = row + dr, col + dc
+            if 0 <= r < self.rows and 0 <= c < self.columns:
+                region = self.cells[r][c].region
+                if region is not None and region != self.cells[row][col].region:
+                    neighbours.add(region)
+        return list(neighbours)
 
     def get_value(self, row, column):
         if row < 0 or row >= self.rows or column < 0 or column >= self.columns:
@@ -262,15 +277,19 @@ class Board:
                     cell = self.cells[row][col]
                     if cell.piece is not None and cell.piece != 'X':
                         return False
-            
+        
+        adjacent_piece_regions = []
         #Não poder uma peça igual adjacente
-        for row, col in piece_positions:
+        for row, col in piece_positions:   
             adjacent_values = self.adjacent_values_cell(row, col)
+            adjacent_piece_regions += self.adjacent_regions_cell(row, col)
             for val in adjacent_values:
                 if val in ['L', 'I', 'T', 'S'] and val == piece_value:
                     # print(f"Piece value {piece_value} and val: {val}")
                     #print("Sou eu")
                     return False
+        if not adjacent_piece_regions:
+            return False #A peça nem toca outras regiões
                 
         #ESTE CA é O NOVO
         adjacent_regions = self.adjacent_regions(region)
@@ -546,6 +565,7 @@ class Nuruomino(Problem):
     def _precompute_all_possibilities(self):
         """Pré-computa todas as possibilidades para cada região"""
         pieces = [Piece(piece_id) for piece_id in ['L', 'I', 'T', 'S']]
+        #pieces = [Piece(piece_id) for piece_id in ['I', 'T', 'S', 'L']] #Começamos com a peças com menos variações e continuamos assim
         
         for region in range(1, self.board.number_of_regions() + 1):
             possibilities = []
@@ -762,8 +782,8 @@ class Nuruomino(Problem):
         return num_empty + heuristic_value
 
 if __name__ == "__main__":
-    # import time
-    # start_time = time.time()
+    import time
+    start_time = time.time()
     board = Board.parse_instance()
 
     # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
@@ -806,7 +826,7 @@ if __name__ == "__main__":
     #solution = depth_first_tree_search(problem)
     #solution = breadth_first_graph_search(problem)
     #solution = greedy_search(problem)
-    # solution = hill_climbing(problem)
+    #solution = hill_climbing(problem)
     
     # if solution:
     #     #print("Solução encontrada:")
@@ -824,9 +844,9 @@ if __name__ == "__main__":
         # print("\n")
         # print("Solução encontrada:")
         solution.state.board._show_board_end_()
-        # end_time = time.time()
-        # print("\n")
-        # print(f"Test completed in {end_time - start_time:.2f} seconds")
+        end_time = time.time()
+        print("\n")
+        print(f"Test completed in {end_time - start_time:.2f} seconds")
 
     else:
         print("Nenhuma solução encontrada")
