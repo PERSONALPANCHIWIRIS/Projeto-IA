@@ -69,6 +69,7 @@ class NuruominoState:
         self.id = NuruominoState.state_id
         NuruominoState.state_id += 1
         self.region_values = board.value_regions()
+        self.region_graph = board.build_region_graph()  # Grafo de adjacências entre regiões
         # Cache para acelerar verificações
         self._adjacency_cache = {}
         self._empty_regions_cache = None
@@ -100,6 +101,51 @@ class NuruominoState:
         
         self._connectivity_score_cache[region] = connectivity_score
         return connectivity_score
+    
+    def islands_in_graph(self):
+        # all_regions = set(self.region_graph.keys())
+
+        # visited = set()
+        # start = next(iter(all_regions))  # Começa de qualquer região
+        # queue = deque([start])
+
+        # while queue:
+        #     current = queue.popleft()
+        #     if current in visited:
+        #         continue
+        #     visited.add(current)#Já visitamos a propria
+
+        #     for neighbor in self.region_graph.get(current, set()):
+        #         if neighbor in all_regions and neighbor not in visited:
+        #             queue.append(neighbor)
+
+        # # Se nem todas as regiões ativas foram visitadas, há ilhas
+        # return visited != all_regions
+        return not self.is_graph_connected()
+    
+    def is_graph_connected(self):
+        if not self.region_graph:
+            return True
+        
+        # Começar de qualquer região
+        start_region = next(iter(self.region_graph.keys()))
+        visited = {start_region}
+        queue = deque([start_region])
+        
+        while queue:
+            current = queue.popleft()
+            #print("Current region:", current)
+            for neighbor in self.region_graph.get(current, set()):
+                #print("Neighbor region:", neighbor)
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+        
+        # Se visitamos todas as regiões, o grafo está conectado
+        #print("region graph:", board.region_graph)
+        #print("len visited:", len(visited))
+        #print("len region graph:", len(self.region_graph))
+        return len(visited) == len(self.region_graph)
 
 class Cell:
     def __init__(self, row, col, region):
@@ -119,7 +165,7 @@ class Board:
         self.columns = len(cells[0]) if cells else 0
         #print(f"Board initialized with {self.rows} rows and {self.columns} columns")
         self.region_values = {}
-        self.region_graph = {}
+        #self.region_graph = {}
         
         
         # Caches para otimização
@@ -134,7 +180,7 @@ class Board:
         #COLOQUEI EU
         self.region_values = self.value_regions()
         #NOVO: isto aqui seria o tal grafo de adjacencias
-        self.region_graph = self.build_region_graph()
+        #self.region_graph = self.build_region_graph()
         
 
     def _precompute_region_info(self):
@@ -636,9 +682,14 @@ class Board:
         graph = {region: set() for region in range(1, self.number_of_regions() + 1)}
         empty_regions = self.get_empty_regions()
         filled_regions = self.get_filled_regions()
+        visited = set()
         for region in graph:
+            if region in visited:
+                pass
             neighbours = self.adjacent_region_graph(region)
             for neighbour in neighbours:
+                if neighbour in visited:
+                    pass
                 if region in empty_regions and neighbour in empty_regions:
                     graph[region].add(neighbour)
                     graph[neighbour].add(region)  #nos dois sentidos
@@ -676,6 +727,7 @@ class Board:
                             graph[region].add(neighbour)
                             graph[neighbour].add(region)
                             break
+            visited.add(region)
                 
 
         #print("Grafo de regiões construído:", graph)
@@ -766,50 +818,50 @@ class Board:
         #     if adj in self.region_graph:
         #         self.region_graph[adj].add(region)
 
-    def islands_in_graph(self):
-        # all_regions = set(self.region_graph.keys())
+    # def islands_in_graph(self):
+    #     # all_regions = set(self.region_graph.keys())
 
-        # visited = set()
-        # start = next(iter(all_regions))  # Começa de qualquer região
-        # queue = deque([start])
+    #     # visited = set()
+    #     # start = next(iter(all_regions))  # Começa de qualquer região
+    #     # queue = deque([start])
 
-        # while queue:
-        #     current = queue.popleft()
-        #     if current in visited:
-        #         continue
-        #     visited.add(current)#Já visitamos a propria
+    #     # while queue:
+    #     #     current = queue.popleft()
+    #     #     if current in visited:
+    #     #         continue
+    #     #     visited.add(current)#Já visitamos a propria
 
-        #     for neighbor in self.region_graph.get(current, set()):
-        #         if neighbor in all_regions and neighbor not in visited:
-        #             queue.append(neighbor)
+    #     #     for neighbor in self.region_graph.get(current, set()):
+    #     #         if neighbor in all_regions and neighbor not in visited:
+    #     #             queue.append(neighbor)
 
-        # # Se nem todas as regiões ativas foram visitadas, há ilhas
-        # return visited != all_regions
-        return not self.is_graph_connected()
+    #     # # Se nem todas as regiões ativas foram visitadas, há ilhas
+    #     # return visited != all_regions
+    #     return not self.is_graph_connected()
     
-    def is_graph_connected(self):
-        if not self.region_graph:
-            return True
+    # def is_graph_connected(self):
+    #     if not self.region_graph:
+    #         return True
         
-        # Começar de qualquer região
-        start_region = next(iter(self.region_graph.keys()))
-        visited = {start_region}
-        queue = deque([start_region])
+    #     # Começar de qualquer região
+    #     start_region = next(iter(self.region_graph.keys()))
+    #     visited = {start_region}
+    #     queue = deque([start_region])
         
-        while queue:
-            current = queue.popleft()
-            #print("Current region:", current)
-            for neighbor in self.region_graph.get(current, set()):
-                #print("Neighbor region:", neighbor)
-                if neighbor not in visited:
-                    visited.add(neighbor)
-                    queue.append(neighbor)
+    #     while queue:
+    #         current = queue.popleft()
+    #         #print("Current region:", current)
+    #         for neighbor in self.region_graph.get(current, set()):
+    #             #print("Neighbor region:", neighbor)
+    #             if neighbor not in visited:
+    #                 visited.add(neighbor)
+    #                 queue.append(neighbor)
         
-        # Se visitamos todas as regiões, o grafo está conectado
-        #print("region graph:", board.region_graph)
-        #print("len visited:", len(visited))
-        #print("len region graph:", len(self.region_graph))
-        return len(visited) == len(self.region_graph)
+    #     # Se visitamos todas as regiões, o grafo está conectado
+    #     #print("region graph:", board.region_graph)
+    #     #print("len visited:", len(visited))
+    #     #print("len region graph:", len(self.region_graph))
+    #     return len(visited) == len(self.region_graph)
 
 class Nuruomino(Problem):
     def __init__(self, board: Board):
@@ -906,8 +958,8 @@ class Nuruomino(Problem):
             return (num_possibilities, -connectivity_score)
         
         #Tirei a menor região
-        #region = min(empty_regions, key=region_priority)
-        sorted_regions = sorted(empty_regions, key=region_priority)
+        region = min(empty_regions, key=region_priority)
+        #sorted_regions = sorted(empty_regions, key=region_priority)
         #print("SORTED REGIONS:", sorted_regions)
         
         # Escolher a região com menos possibilidades (MRV - Most Constraining Variable)
@@ -925,28 +977,35 @@ class Nuruomino(Problem):
         #         actions.append((Piece(piece_id), variation, row, col))
 
 
-        #region_possibilities = self.possibilities.get(region, [])
-
-        for region in sorted_regions:
-            region_possibilities = self.possibilities.get(region, [])
-            #region_connectivity_scores = self.connectivity_scores.get(region, [])
-            #EXPERIMENTAR
-            connect_scores = []
-            for _, variation, (row, col) in region_possibilities:
+        connect_scores = []
+        region_possibilities = self.possibilities.get(region, [])
+        for _, variation, (row, col) in region_possibilities:
                 var_score = self.board.get_variation_potential(variation, row, col)
                 connect_scores.append(var_score)
-            self.connectivity_scores[region] = connect_scores
-            region_connectivity_scores = self.connectivity_scores.get(region, [])
+                self.connectivity_scores[region] = connect_scores
+                region_connectivity_scores = self.connectivity_scores.get(region, [])
+
+
+        # for region in sorted_regions:
+        #     region_possibilities = self.possibilities.get(region, [])
+        #     #region_connectivity_scores = self.connectivity_scores.get(region, [])
+        #     #EXPERIMENTAR
+        #     connect_scores = []
+        #     for _, variation, (row, col) in region_possibilities:
+        #         var_score = self.board.get_variation_potential(variation, row, col)
+        #         connect_scores.append(var_score)
+        #     self.connectivity_scores[region] = connect_scores
+        #     region_connectivity_scores = self.connectivity_scores.get(region, [])
 
         
             # Combinar possibilidades com scores e ordenar por conectividade
-            possibility_data = list(zip(region_possibilities, region_connectivity_scores))
-            possibility_data.sort(key=lambda x: -x[1])  # Ordenar por conectividade decrescente
-        
-            for (piece_id, variation, (row, col)), ___ in possibility_data:
-                if state.board.can_place_specific(variation, row, col, piece_id):
-                    #print(f"Action: {piece_id}, {variation}, {row}, {col}")
-                    actions.append((Piece(piece_id), variation, row, col))
+        possibility_data = list(zip(region_possibilities, region_connectivity_scores))
+        possibility_data.sort(key=lambda x: -x[1])  # Ordenar por conectividade decrescente
+    
+        for (piece_id, variation, (row, col)), ___ in possibility_data:
+            if state.board.can_place_specific(variation, row, col, piece_id):
+                #print(f"Action: {piece_id}, {variation}, {row}, {col}")
+                actions.append((Piece(piece_id), variation, row, col))
             
         #for piece, variation, row, col in actions:
             #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {self.board.get_region(row, col)}")
@@ -965,12 +1024,13 @@ class Nuruomino(Problem):
             #new_board._show_board_end_()
             #print(" ")
                 
+            state.build_region_graph(row, col)  # Atualizar o grafo de regiões após colocar a peça
             # Verificação rápida de 2x2
             if new_board.has_2x2_piece_block():
                 #print("Criamos um 2x2 se formos colocar")
                 return None
             
-            if new_board.islands_in_graph():
+            if state.islands_in_graph():
                 #print(new_board.islands_in_graph())
                 #print("Criamos uma ilha se formos colocar")
                 #print(state.board.region_graph)
