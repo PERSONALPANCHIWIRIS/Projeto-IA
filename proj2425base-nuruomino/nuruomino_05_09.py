@@ -76,6 +76,7 @@ class NuruominoState:
         self._empty_regions_cache = None
         # Cache para conectividade de peças
         self._connectivity_score_cache = {}
+        self._empty_adjacent_cache = []
 
     def __lt__(self, other):
         return self.id < other.id
@@ -183,6 +184,38 @@ class NuruominoState:
                 visited.add(neighbour) #Adiciona o vizinho ao conjunto de visitados
             visited.add(region)
         self.region_graph = graph
+
+    def get_empty_adjacent_cache(self):
+        if not self._empty_adjacent_cache:
+            #empty_regions = self.get_empty_regions()
+            filled_regions = self.board.get_filled_regions()
+            #adjacent_empty = set()
+
+            # for filled_region in filled_regions:
+            #     adjacent = self.board.adjacent_regions(filled_region)
+            #     for region in adjacent:
+            #         if region in empty_regions:
+            #             adjacent_empty.add(region)
+
+            #self._empty_adjacent_cache = list(adjacent_empty)
+
+
+
+            #print("TRincão joga hoje")
+            adjacents_final = []
+            for reg in filled_regions:
+                #print("Reg: ", reg)
+                
+                adjacents = self.board.adjacent_regions(reg)
+                #print("Adjacents:", adjacents)
+                for adj in adjacents:
+                    if adj not in filled_regions and adj not in adjacents_final:
+                        adjacents_final.append(adj)    
+            #print("Adjacents final:", adjacents_final)      
+            #empty_regions = adjacents_final
+            self._empty_adjacent_cache = adjacents_final
+        
+        return self._empty_adjacent_cache
 
 
 class Cell:
@@ -810,8 +843,25 @@ class Nuruomino(Problem):
             return []
         #
         #print(f"ID de actions: {state.id}")
-        
-        empty_regions = state.get_empty_regions()
+        filled_regions = state.board.get_filled_regions()
+        if not filled_regions:
+            empty_regions = state.get_empty_regions()
+        else:
+            empty_regions = state.get_empty_adjacent_cache()
+            # #print("TRincão joga hoje")
+            # adjacents_final = []
+            # for reg in filled_regions:
+            #     #print("Reg: ", reg)
+                
+            #     adjacents = state.board.adjacent_regions(reg)
+            #     #print("Adjacents:", adjacents)
+            #     for adj in adjacents:
+            #         if adj not in filled_regions and adj not in adjacents_final:
+            #             adjacents_final.append(adj)    
+            # #print("Adjacents final:", adjacents_final)      
+            # empty_regions = adjacents_final
+
+        #empty_regions = state.get_empty_regions()
         #for empty_region in empty_regions:
             #print(f"Region thats empty: {empty_region}")
         if not empty_regions:
@@ -925,8 +975,8 @@ class Nuruomino(Problem):
 
             #print(f"We placed piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
             successor = NuruominoState(new_board)
-            # print(f"And created: {successor.id}")
-            # new_board._show_board_end_()
+            #print(f"And created: {successor.id}")
+            #new_board._show_board_end_()
                    
             return successor 
         

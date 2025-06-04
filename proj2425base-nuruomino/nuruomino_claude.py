@@ -1161,3 +1161,6 @@ if __name__ == "__main__":
 # print("region graph:", board.region_graph)
 # print(board.is_graph_connected())
 # print(board.islands_in_graph())
+
+
+##ESTE CA PASSA 9 TESTES
