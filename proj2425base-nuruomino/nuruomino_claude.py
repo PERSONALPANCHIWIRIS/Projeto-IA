@@ -513,7 +513,6 @@ class Board:
     
     #Quantas celas ocupadas pode esta peça vir a conectar
     #Podia-se contar peças, mas acho que mais vale contar celas
-    #Se eu tirar region, nãa dá
     def get_connectivity_potential(self, piece_positions):
         connectivity_score = 0
         
@@ -767,7 +766,7 @@ class Nuruomino(Problem):
         self._precompute_all_possibilities()
         
         # Ordenar regiões por dificuldade e conectividade
-        self.region_order = self._compute_region_order()
+        #self.region_order = self._compute_region_order()
 
     def _precompute_all_possibilities(self):
         """Pré-computa todas as possibilidades para cada região"""
@@ -807,25 +806,25 @@ class Nuruomino(Problem):
             self.possibilities[region] = possibilities
             self.connectivity_scores[region] = connectivity_scores
 
-    def _compute_region_order(self):
-        """Ordena regiões por dificuldade de preenchimento (menos possibilidades primeiro)"""
-        regions = list(range(1, self.board.number_of_regions() + 1))
+    # def _compute_region_order(self):
+    #     """Ordena regiões por dificuldade de preenchimento (menos possibilidades primeiro)"""
+    #     regions = list(range(1, self.board.number_of_regions() + 1))
 
-        def region_priority(region):
-            num_possibilities = len(self.possibilities.get(region, []))
-            if num_possibilities == 0:
-                return (float('inf'), 0)  # Região impossível
+    #     def region_priority(region):
+    #         num_possibilities = len(self.possibilities.get(region, []))
+    #         if num_possibilities == 0:
+    #             return (float('inf'), 0)  # Região impossível
             
-            # Média de conectividade das possibilidades
-            avg_connectivity = 0
-            if region in self.connectivity_scores and self.connectivity_scores[region]:
-                avg_connectivity = sum(self.connectivity_scores[region]) / len(self.connectivity_scores[region])
+    #         # Média de conectividade das possibilidades
+    #         avg_connectivity = 0
+    #         if region in self.connectivity_scores and self.connectivity_scores[region]:
+    #             avg_connectivity = sum(self.connectivity_scores[region]) / len(self.connectivity_scores[region])
             
-            # Priorizar: menos possibilidades primeiro, maior conectividade como desempate
-            return (num_possibilities, - avg_connectivity)
+    #         # Priorizar: menos possibilidades primeiro, maior conectividade como desempate
+    #         return (num_possibilities, - avg_connectivity)
         
-        return sorted(regions, key=region_priority)
-        #return sorted(regions, key=lambda r: len(self.possibilities.get(r, [])))
+    #     return sorted(regions, key=region_priority)
+    #     #return sorted(regions, key=lambda r: len(self.possibilities.get(r, [])))
 
     def actions(self, state: NuruominoState):
         if state is None:
@@ -850,7 +849,9 @@ class Nuruomino(Problem):
             # Priorizar: menos possibilidades, maior conectividade
             return (num_possibilities, -connectivity_score)
         
+        #Tirei a menor região
         region = min(empty_regions, key=region_priority)
+        
         # Escolher a região com menos possibilidades (MRV - Most Constraining Variable)
         #region = min(empty_regions, key=lambda r: len(self.possibilities.get(r, [])))
         #print(f"EASIER REGION: {region}")
@@ -944,6 +945,7 @@ class Nuruomino(Problem):
             #print("Criou-se um 2x2")
             return False
 
+        print("ID: ", state.id)
         return True
 
     def h(self, node: Node):
@@ -1001,8 +1003,8 @@ class Nuruomino(Problem):
         return num_empty + heuristic_value
 
 if __name__ == "__main__":
-    # import time
-    # start_time = time.time()
+    import time
+    start_time = time.time()
     board = Board.parse_instance()
     #O grafo de adjacencias 
     board.region_graph = board.build_region_graph()
@@ -1067,9 +1069,9 @@ if __name__ == "__main__":
         # print("\n")
         # print("Solução encontrada:")
         solution.state.board._show_board_end_()
-        # end_time = time.time()
-        # print("\n")
-        # print(f"Test completed in {end_time - start_time:.2f} seconds")
+        end_time = time.time()
+        print("\n")
+        print(f"Test completed in {end_time - start_time:.2f} seconds")
 
     else:
         #print("region graph:", board.region_graph)
