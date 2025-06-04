@@ -119,6 +119,7 @@ class Board:
         self.columns = len(cells[0]) if cells else 0
         #print(f"Board initialized with {self.rows} rows and {self.columns} columns")
         self.region_values = {}
+        self.region_graph = {}
         
         
         # Caches para otimização
@@ -133,8 +134,8 @@ class Board:
         #COLOQUEI EU
         self.region_values = self.value_regions()
         #NOVO: isto aqui seria o tal grafo de adjacencias
-        #self.region_graph = self.build_region_graph()
-        self.region_graph = {}
+        self.region_graph = self.build_region_graph()
+        
 
     def _precompute_region_info(self):
         """Pré-computa informações sobre regiões para otimização"""
@@ -467,7 +468,7 @@ class Board:
                             self.cells[row][col].region = None
 
         #self.update_region_graph(cell_region, piece_positions)
-        self.update_region_graph(cell_region)
+        #self.update_region_graph(cell_region)
 
     def are_pieces_connected(self):
         piece_cells = []
@@ -573,7 +574,7 @@ class Board:
 
         new_board = Board(new_cells)
         new_board.region_values = dict(self.region_values)
-        new_board.region_graph = dict(self.region_graph)  # Copiar o grafo de regiões
+        #new_board.region_graph = dict(self.region_graph)  # Copiar o grafo de regiões
         return new_board
 
     def region_piece_coord(self, region):
@@ -633,11 +634,49 @@ class Board:
 
     def build_region_graph(self): #Ao inicio está tudo ligado com tudo
         graph = {region: set() for region in range(1, self.number_of_regions() + 1)}
+        empty_regions = self.get_empty_regions()
+        filled_regions = self.get_filled_regions()
         for region in graph:
             neighbours = self.adjacent_region_graph(region)
             for neighbour in neighbours:
-                graph[region].add(neighbour)
-                graph[neighbour].add(region)  #nos dois sentidos
+                if region in empty_regions and neighbour in empty_regions:
+                    graph[region].add(neighbour)
+                    graph[neighbour].add(region)  #nos dois sentidos
+
+                elif region in filled_regions and neighbour in filled_regions:
+                    my_piece_coord = self.region_piece_coord(region)
+                    neighbour_piece_coord = self.region_piece_coord(neighbour)
+                    pieces_touch = False
+
+                    for piece_row, piece_col in my_piece_coord:
+                        adjacent_coords = self.adjacent_coord_cell(piece_row, piece_col)
+                        if any((r, c) in neighbour_piece_coord for r, c in adjacent_coords):
+                            pieces_touch = True
+                            break
+
+                    if pieces_touch:
+                        graph[region].add(neighbour)
+                        graph[neighbour].add(region)
+
+
+                elif region in filled_regions and neighbour in empty_regions:
+                    my_piece_coord = self.region_piece_coord(region)
+                    for piece_row, piece_col in my_piece_coord:
+                        adjacent_regs = self.adjacent_regions_cell(piece_row, piece_col)
+                        if neighbour in adjacent_regs:
+                            graph[region].add(neighbour)
+                            graph[neighbour].add(region)
+                            break
+
+                elif region in empty_regions and neighbour in filled_regions:
+                    neighbour_piece_coord = self.region_piece_coord(neighbour)
+                    for row, col in neighbour_piece_coord:
+                        adjacent_regs = self.adjacent_regions_cell(row, col)
+                        if region in adjacent_regs:
+                            graph[region].add(neighbour)
+                            graph[neighbour].add(region)
+                            break
+                
 
         #print("Grafo de regiões construído:", graph)
         return graph
@@ -655,7 +694,7 @@ class Board:
                 if reg not in adjacent_to_piece:
                     adjacent_to_piece.append(reg)
 
-        # print("Adjacento to piece:", adjacent_to_piece)
+        #print("Adjacento to piece:", adjacent_to_piece)
         # print("Empty regions:", empty_regions)
         # print("Filled regions:", filled_regions)
         for adj_region in adjacent_to_piece:
@@ -709,11 +748,11 @@ class Board:
             self.region_graph[adj].add(region)
 
         #remover na bidirecionalidade
-        # for r in self.region_graph.keys():
-        #     if r != region and region in self.region_graph[r] and r not in new_adjacent:
-        #         #print("REMOVING REGION:", region, "FROM", r)
-        #         self.region_graph[r].remove(region)
-        #print("PINCHES SAPOS")
+        for r in self.region_graph.keys():
+            if r != region and region in self.region_graph[r] and r not in new_adjacent:
+                #print("REMOVING REGION:", region, "FROM", r)
+                self.region_graph[r].remove(region)
+        # print("PINCHES SAPOS")
 
         
 
@@ -850,8 +889,8 @@ class Nuruomino(Problem):
         #print(f"ID de actions: {state.id}")
         
         empty_regions = state.get_empty_regions()
-        # for empty_region in empty_regions:
-        #     #print(f"Region thats empty: {empty_region}")
+        #for empty_region in empty_regions:
+            #print(f"Region thats empty: {empty_region}")
         if not empty_regions:
             return []
         
@@ -867,7 +906,9 @@ class Nuruomino(Problem):
             return (num_possibilities, -connectivity_score)
         
         #Tirei a menor região
-        region = min(empty_regions, key=region_priority)
+        #region = min(empty_regions, key=region_priority)
+        sorted_regions = sorted(empty_regions, key=region_priority)
+        #print("SORTED REGIONS:", sorted_regions)
         
         # Escolher a região com menos possibilidades (MRV - Most Constraining Variable)
         #region = min(empty_regions, key=lambda r: len(self.possibilities.get(r, [])))
@@ -882,26 +923,33 @@ class Nuruomino(Problem):
                 
         #         print(f"Action: {piece_id}, {variation}, {row}, {col}")
         #         actions.append((Piece(piece_id), variation, row, col))
-        region_possibilities = self.possibilities.get(region, [])
-        #region_connectivity_scores = self.connectivity_scores.get(region, [])
-        #EXPERIMENTAR
-        connect_scores = []
-        for _, variation, (row, col) in region_possibilities:
-            var_score = self.board.get_variation_potential(variation, row, col)
-            connect_scores.append(var_score)
-        self.connectivity_scores[region] = connect_scores
-        region_connectivity_scores = self.connectivity_scores.get(region, [])
+
+
+        #region_possibilities = self.possibilities.get(region, [])
+
+        for region in sorted_regions:
+            region_possibilities = self.possibilities.get(region, [])
+            #region_connectivity_scores = self.connectivity_scores.get(region, [])
+            #EXPERIMENTAR
+            connect_scores = []
+            for _, variation, (row, col) in region_possibilities:
+                var_score = self.board.get_variation_potential(variation, row, col)
+                connect_scores.append(var_score)
+            self.connectivity_scores[region] = connect_scores
+            region_connectivity_scores = self.connectivity_scores.get(region, [])
 
         
-        # Combinar possibilidades com scores e ordenar por conectividade
-        possibility_data = list(zip(region_possibilities, region_connectivity_scores))
-        possibility_data.sort(key=lambda x: -x[1])  # Ordenar por conectividade decrescente
+            # Combinar possibilidades com scores e ordenar por conectividade
+            possibility_data = list(zip(region_possibilities, region_connectivity_scores))
+            possibility_data.sort(key=lambda x: -x[1])  # Ordenar por conectividade decrescente
         
-        for (piece_id, variation, (row, col)), ___ in possibility_data:
-            if state.board.can_place_specific(variation, row, col, piece_id):
-                #print(f"Action: {piece_id}, {variation}, {row}, {col}")
-                actions.append((Piece(piece_id), variation, row, col))
-        
+            for (piece_id, variation, (row, col)), ___ in possibility_data:
+                if state.board.can_place_specific(variation, row, col, piece_id):
+                    #print(f"Action: {piece_id}, {variation}, {row}, {col}")
+                    actions.append((Piece(piece_id), variation, row, col))
+            
+        #for piece, variation, row, col in actions:
+            #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {self.board.get_region(row, col)}")
         return actions
 
 
@@ -915,6 +963,7 @@ class Nuruomino(Problem):
             new_board.place_specific(variation, row, col, piece.id)
             #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
             #new_board._show_board_end_()
+            #print(" ")
                 
             # Verificação rápida de 2x2
             if new_board.has_2x2_piece_block():
@@ -953,6 +1002,7 @@ class Nuruomino(Problem):
             #print("Action deixou de ser valida")
             return False
         #print(f"Testing goal for state {state.id}")
+        #print(" ")
         # Verificar se todas as regiões estão preenchidas
         current_regions = state.board.value_regions()
         for region, value in current_regions.items():
@@ -970,7 +1020,7 @@ class Nuruomino(Problem):
             #print("Criou-se um 2x2")
             return False
 
-        print("ID: ", state.id)
+        #print("ID: ", state.id)
         return True
 
     def h(self, node: Node):
