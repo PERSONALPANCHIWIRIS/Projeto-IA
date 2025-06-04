@@ -1001,8 +1001,8 @@ class Nuruomino(Problem):
         return num_empty + heuristic_value
 
 if __name__ == "__main__":
-    import time
-    start_time = time.time()
+    # import time
+    # start_time = time.time()
     board = Board.parse_instance()
     #O grafo de adjacencias 
     board.region_graph = board.build_region_graph()
@@ -1067,9 +1067,9 @@ if __name__ == "__main__":
         # print("\n")
         # print("Solução encontrada:")
         solution.state.board._show_board_end_()
-        end_time = time.time()
-        print("\n")
-        print(f"Test completed in {end_time - start_time:.2f} seconds")
+        # end_time = time.time()
+        # print("\n")
+        # print(f"Test completed in {end_time - start_time:.2f} seconds")
 
     else:
         #print("region graph:", board.region_graph)
