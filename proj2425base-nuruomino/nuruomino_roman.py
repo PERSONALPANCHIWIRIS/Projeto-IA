@@ -245,6 +245,8 @@ class Board:
 
     def can_place_specific(self, variation, start_row, start_col, piece_value):
         region = self.cells[start_row][start_col].region
+        # if region is None:
+        #     print("WISIN Y YANDEL")
         if region is None or self.region_values.get(region, 0) != 0:
             return False
 
@@ -820,8 +822,8 @@ if __name__ == "__main__":
     problem = Nuruomino(board)
     
     # Usar A* como algoritmo principal (melhor para este tipo de problema)
-    solution = astar_search(problem)
-    #solution = depth_first_graph_search(problem)
+    #solution = astar_search(problem)
+    solution = depth_first_graph_search(problem)
     #solution = breadth_first_tree_search(problem)
     #solution = depth_first_tree_search(problem)
     #solution = breadth_first_graph_search(problem)
