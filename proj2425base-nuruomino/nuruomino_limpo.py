@@ -10,26 +10,27 @@ from search import *
 import numpy as np
 
 PIECES = {
-    'L': [[0, 1],
-          ['X', 1],
-          [1, 1]],
-
-    'T': [[1, 1, 1],
-          ['X', 1, 'X']],
-
+    'L': [['0', '1'],
+          ['X', '1'],
+          ['1', '1']],
+    'T': [['1', '1', '1'],
+          ['X', '1', 'X']],
     'I': [['1', '1', '1', '1']],
-
-    'S': [['X', 1, 1],
-          [1, 1, 'X']],
+    'S': [['X', '1', '1'],
+          ['1', '1', 'X']],
 }
 
-#Uma representação abstrata de uma peça
 class Piece:
+    _variations_cache = {}
+    
     def __init__(self, id):
         self.id = id
         self.shape = PIECES[id]
-        self.variations = self.generate_all_variations()
-
+        
+        # Cache das variações para evitar recalcular
+        if id not in Piece._variations_cache:
+            Piece._variations_cache[id] = self.generate_all_variations()
+        self.variations = Piece._variations_cache[id]
 
     def rotate_90(self, shape, k):
         piece_matrix = np.array(shape)
@@ -40,27 +41,25 @@ class Piece:
         piece_matrix = np.array(shape)
         reflected = np.fliplr(piece_matrix)
         return reflected
-    
 
     def generate_all_variations(self):
         variations = set()
         current_shape = np.array(self.shape)
-        k = 1
-        for _ in range(4):
+        
+        # Rotações
+        for k in range(4):
             shape_tuple = tuple(map(tuple, current_shape))
             variations.add(shape_tuple)
-            current_shape = self.rotate_90(current_shape, k)
-            k += 1
+            current_shape = self.rotate_90(current_shape, 1)
 
-        k = 1
+        # Reflexões + rotações
         current_shape = self.reflect(self.shape)
-        for _ in range(4):
+        for k in range(4):
             shape_tuple = tuple(map(tuple, current_shape))
             variations.add(shape_tuple)
-            current_shape = self.rotate_90(current_shape, k)
-            k += 1
+            current_shape = self.rotate_90(current_shape, 1)
 
-        return variations
+        return list(variations)
 
 class NuruominoState:
     state_id = 0
@@ -71,12 +70,216 @@ class NuruominoState:
         NuruominoState.state_id += 1
         self.region_values = board.value_regions()
 
-    def __lt__(self, other):
-        """ Este método é utilizado em caso de empate na gestão da lista
-        de abertos nas procuras informadas. """
-        return self.id < other.id
+        #Desta forma constroi sempre em cada estado
+        #self.region_graph = self._initialize_region_graph()
 
-#Cada coordenada do tabuleiro
+        self.region_graph = {}
+
+        # Cache para acelerar verificações
+        self._adjacency_cache = {}
+        self._empty_regions_cache = None
+        # Cache para conectividade de peças
+        self._connectivity_score_cache = {}
+        self._empty_adjacent_cache = []
+
+    def __lt__(self, other):
+        return self.id < other.id
+    
+    def get_empty_regions(self):
+        if self._empty_regions_cache is None:
+            self._empty_regions_cache = [region for region, value in self.region_values.items() if value == 0]
+        return self._empty_regions_cache
+    
+    def get_connectivity_score(self, region):
+        """Calcula um score de conectividade para uma região baseado em peças adjacentes"""
+        if region in self._connectivity_score_cache:
+            return self._connectivity_score_cache[region]
+        
+        adjacent_regions = self.board.adjacent_regions(region)
+        connectivity_score = 0
+        
+        for adj_region in adjacent_regions:
+            if self.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']:
+                connectivity_score += 1
+        
+        self._connectivity_score_cache[region] = connectivity_score
+        return connectivity_score
+    
+    def islands_in_graph(self):
+        return not self.is_graph_connected()
+    
+    def is_graph_connected(self):
+        if not self.region_graph:
+            return True
+        
+        # Começar de qualquer região
+        start_region = next(iter(self.region_graph.keys()))
+        visited = {start_region}
+        queue = deque([start_region])
+        
+        while queue:
+            current = queue.popleft()
+            #print("Current region:", current)
+            for neighbor in self.region_graph.get(current, set()):
+                #print("Neighbor region:", neighbor)
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+        
+        # Se visitamos todas as regiões, o grafo está conectado
+        #print("region graph:", board.region_graph)
+        #print("len visited:", len(visited))
+        #print("len region graph:", len(self.region_graph))
+        return len(visited) == len(self.region_graph)
+    
+    def _initialize_region_graph(self):
+        graph = {region: set() for region in range(1, self.board.number_of_regions() + 1)}
+        empty_regions = self.board.get_empty_regions()
+        filled_regions = self.board.get_filled_regions()
+        
+        # Build connections between all regions
+        for region in graph:
+            neighbours = self.board.adjacent_region_graph(region)
+            for neighbour in neighbours:
+                if region < neighbour:  # Avoid duplicate processing
+                    self._connect_regions_if_valid(graph, region, neighbour, empty_regions, filled_regions)
+        
+        self.region_graph = graph
+        #return graph
+    
+    def _connect_regions_if_valid(self, graph, region1, region2, empty_regions, filled_regions):
+        # Duas empty, liga tudo
+        if region1 in empty_regions and region2 in empty_regions:
+            graph[region1].add(region2)
+            graph[region2].add(region1)
+            return True
+        
+        # Ve se as peças se tocam
+        elif region1 in filled_regions and region2 in filled_regions:
+            if self._pieces_touch(region1, region2):
+                graph[region1].add(region2)
+                graph[region2].add(region1)
+                return True
+        
+        #Uma filled, uma empty
+        elif region1 in filled_regions and region2 in empty_regions:
+            if self._piece_touches_empty_region(region1, region2):
+                graph[region1].add(region2)
+                graph[region2].add(region1)
+                return True
+        #Esquerda filled, direita empty
+        elif region1 in empty_regions and region2 in filled_regions:
+            if self._piece_touches_empty_region(region2, region1):
+                graph[region1].add(region2)
+                graph[region2].add(region1)
+                return True
+        
+        return False
+    
+    def _pieces_touch(self, region1, region2):
+        region1_coords = self.board.region_piece_coord(region1)
+        region2_coords = self.board.region_piece_coord(region2)
+        
+        for r1, c1 in region1_coords:
+            adjacent_coords = self.board.adjacent_coord_cell(r1, c1)
+            if any((r, c) in region2_coords for r, c in adjacent_coords):
+                return True
+        return False
+    
+    def _piece_touches_empty_region(self, filled_region, empty_region):
+        piece_coords = self.board.region_piece_coord(filled_region)
+        for row, col in piece_coords:
+            adjacent_regions = self.board.adjacent_regions_cell(row, col)
+            if empty_region in adjacent_regions:
+                return True
+        return False
+    
+    def update_region_graph_incremental(self, placed_region):
+        empty_regions = self.board.get_empty_regions()
+        filled_regions = self.board.get_filled_regions()
+        
+        #Só na ortogonalidade
+        adjacent_regions = self.board.adjacent_region_graph(placed_region)
+        
+        #Faz uma copia para ummvalor temporario
+        old_connections = self.region_graph[placed_region].copy()
+        self.region_graph[placed_region].clear()
+        
+        #Vai tudo embora na bidirecionalidade
+        for old_neighbor in old_connections:
+            self.region_graph[old_neighbor].discard(placed_region)
+        
+        # Nas que vamos a mexer
+        regions_to_update = [placed_region] + adjacent_regions
+        
+        #Voltamos a ligar o necessario
+        for region in regions_to_update:
+            if region == placed_region:
+                #Aqui "region" é a placed_region
+                for neighbor in adjacent_regions:
+                    if self._connect_regions_if_valid_simple(region, neighbor, empty_regions, filled_regions):
+                        self.region_graph[region].add(neighbor)
+                        self.region_graph[neighbor].add(region)
+            else:
+
+                if region in adjacent_regions:
+                    if self._connect_regions_if_valid_simple(placed_region, region, empty_regions, filled_regions):
+                        self.region_graph[placed_region].add(region)
+                        self.region_graph[region].add(placed_region)
+
+    #Só usamos para a verificação de casos
+    def _connect_regions_if_valid_simple(self, region1, region2, empty_regions, filled_regions):
+        # Duas vazias, liga tudo
+        if region1 in empty_regions and region2 in empty_regions:
+            return True
+        
+        #Peças hão de se tocar
+        elif region1 in filled_regions and region2 in filled_regions:
+            return self._pieces_touch(region1, region2)
+        
+        #Cheia e vazia
+        elif region1 in filled_regions and region2 in empty_regions:
+            return self._piece_touches_empty_region(region1, region2)
+        
+        #Esquerda filled, direita empty
+        elif region1 in empty_regions and region2 in filled_regions:
+            return self._piece_touches_empty_region(region2, region1)
+        
+        return False
+
+    def get_empty_adjacent_cache(self):
+        if not self._empty_adjacent_cache:
+            #empty_regions = self.get_empty_regions()
+            filled_regions = self.board.get_filled_regions()
+            #adjacent_empty = set()
+
+            # for filled_region in filled_regions:
+            #     adjacent = self.board.adjacent_regions(filled_region)
+            #     for region in adjacent:
+            #         if region in empty_regions:
+            #             adjacent_empty.add(region)
+
+            #self._empty_adjacent_cache = list(adjacent_empty)
+
+
+
+            #print("TRincão joga hoje")
+            adjacents_final = []
+            for reg in filled_regions:
+                #print("Reg: ", reg)
+                
+                adjacents = self.board.adjacent_regions(reg)
+                #print("Adjacents:", adjacents)
+                for adj in adjacents:
+                    if adj not in filled_regions and adj not in adjacents_final:
+                        adjacents_final.append(adj)    
+            #print("Adjacents final:", adjacents_final)      
+            #empty_regions = adjacents_final
+            self._empty_adjacent_cache = adjacents_final
+        
+        return self._empty_adjacent_cache
+
+
 class Cell:
     def __init__(self, row, col, region):
         self.row = row
@@ -84,266 +287,169 @@ class Cell:
         self.region = region
         self.blocked_region = None
         self.piece = None
-        #Ligações para os espaços adjacentes
-        self.up = None
-        self.down = None
-        self.left = None
-        self.right = None
 
     def value(self):
-        return self.piece if self.piece != None else self.region
+        return self.piece if self.piece is not None else self.region
 
 class Board:
-    """Representação interna de um tabuleiro do Puzzle Nuruomino."""
     def __init__(self, cells):
         self.cells = cells
         self.rows = len(cells)
-        self.columns = len(cells)
-        #Uma forma de guardar os dados das regiões. EXPERIMENTAR
+        self.columns = len(cells[0]) if cells else 0
+        #print(f"Board initialized with {self.rows} rows and {self.columns} columns")
         self.region_values = {}
+        
+        
+        # Caches para otimização
+        self._region_cells_cache = {}
+        self._adjacent_regions_cache = {}
+        self._adjacent_regions_graph_cache = {}
+        self._region_sizes_cache = {}
+        self._region_piece_adjacency_cache = {}
+        
+        # Pré-computar informações das regiões
+        self._precompute_region_info()
+        #COLOQUEI EU
+        self.region_values = self.value_regions()
 
-    def adjacent_regions(self, region:int) -> list:
-        """Devolve uma lista das regiões que fazem fronteira com a região enviada no argumento."""
+        
+
+    def _precompute_region_info(self):
+        """Pré-computa informações sobre regiões para otimização"""
+        regions = set()
+        for row in self.cells:
+            for cell in row:
+                if cell.region is not None:
+                    regions.add(cell.region)
+        
+        # Pré-computar células de cada região
+        for region in regions:
+            self._compute_region_cells(region)
+
+    def _compute_region_cells(self, region):
+        """Computa as células de uma região uma vez só"""
+        if region in self._region_cells_cache:
+            return self._region_cells_cache[region]
+            
+        cells = []
+        #print("MWMWMWMWMWMWMWMWMWMWMWMWMWMW")
+        for row in range(self.rows):
+            for col in range(self.columns):
+                if self.cells[row][col].region == region:
+                    cells.append(self.cells[row][col])
+        
+        self._region_cells_cache[region] = cells
+        self._region_sizes_cache[region] = len(cells)
+        return cells
+
+    def region_cells(self, region):
+        return self._compute_region_cells(region)
+    
+    def region_size(self, region):
+        if region not in self._region_sizes_cache:
+            self._compute_region_cells(region)
+        return self._region_sizes_cache.get(region, 0)
+
+    def adjacent_regions(self, region: int) -> list:
+        if region in self._adjacent_regions_cache:
+            return self._adjacent_regions_cache[region]
+            
         cells = self.region_cells(region)
         neighbours = set()
-
-        directions = [  
-            (-1,  0),  # cima
-            ( 1,  0),  # baixo
-            ( 0, -1),  # esquerda
-            ( 0,  1),  # direita
-            (-1, -1),  # cima esquerda
-            (-1,  1),  # cima direita
-            ( 1, -1),  # baixo esquerda
-            ( 1,  1)   # baixo direita
-        ]
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
 
         for cell in cells:
-            for r, c in directions:
-                r, c = cell.row + r, cell.col + c
+            for dr, dc in directions:
+                r, c = cell.row + dr, cell.col + dc
                 if 0 <= r < self.rows and 0 <= c < self.columns:
                     neighbor = self.cells[r][c]
-                    if neighbor.region != region:
+                    if neighbor.region != region and neighbor.region is not None:
                         neighbours.add(neighbor.region)
 
-        return list(neighbours)
+        result = list(neighbours)
+        self._adjacent_regions_cache[region] = result
+        return result
     
-    def adjacent_positions(self, row:int, col:int) -> list:
-        """Devolve as posições adjacentes à região, em todas as direções, incluindo diagonais."""
-        #cell = self.cells[row][col]
-        if 0 > row >= self.rows or 0 > col >= self.columns:
-            return []
-        directions = [  
-            (-1, -1),  # cima esquerda
-            (-1,  0),  # cima
-            (-1,  1),  # cima direita
-            ( 0, -1),  # esquerda    
-            ( 0,  1),  # direita   
-            ( 1, -1),  # baixo esquerda  
-            ( 1,  0),  # baixo
-            ( 1,  1),   # baixo direita
-              
-        ]
-        Adjacents = []
-        region = self.get_region(row, col)
-        region_cells = self.region_cells(region)
-        for cell in region_cells:
-            for r, c in directions:
-                r, c = cell.row + r, cell.col + c
-                if 0 <= r < self.rows and 0 <= c < self.columns and self.cells[r][c].region != cell.region and (r, c) not in Adjacents:
-                    Adjacents.append((r, c))
-        return Adjacents
+    def adjacent_region_graph(self, region: int) -> list:  
+        if region in self._adjacent_regions_graph_cache:
+            return self._adjacent_regions_graph_cache[region] 
+                
+        cells = self.region_cells(region)
+        neighbours = set()
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-    def adjacent_values(self, row:int, col:int) -> list:
-        """Devolve os valores das celulas adjacentes à região, em todas as direções, incluindo diagonais."""
-        if 0 < row >= self.rows or 0 < col >= self.columns:
-            return []
+        for cell in cells:
+            for dr, dc in directions:
+                r, c = cell.row + dr, cell.col + dc
+                if 0 <= r < self.rows and 0 <= c < self.columns:
+                    neighbor = self.cells[r][c]
+                    if neighbor.region != region and neighbor.region is not None:
+                        neighbours.add(neighbor.region)
 
-        adjacent_positions = self.adjacent_positions(row, col)
-        neighbours = []
-        for r, c in adjacent_positions:
-            value = self.cells[r][c].value()
-            if value != 'X' not in neighbours:
-                neighbours.append(value)
-            
-        return neighbours
-    
-    #ESTA É AQUELA QUE HA DE SER USADA PARA VER SE AS PEÇAS "TOCAM-SE"
-    def adjacent_values_cell(self, row:int, col:int) -> list:
-        """Devolve os valores das celulas adjacentes à célula, em todas as direções, incluindo diagonais."""
-        if 0 > row >= self.rows or 0 > col >= self.columns:
+        result = list(neighbours)
+        self._adjacent_regions_graph_cache[region] = result
+        return result
+
+    def adjacent_values_cell(self, row: int, col: int) -> list:
+        if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
             return []
         
-        directions = [  
-            (-1,  0),  # cima
-            ( 0, -1),  # esquerda    
-            ( 0,  1),  # direita    
-            ( 1,  0),  # baixo            
-        ]
+        directions = [(-1, 0), (0, -1), (0, 1), (1, 0)]
         neighbours = []
-        for r, c in directions:
-            r, c = row + r, col + c
+        
+        for dr, dc in directions:
+            r, c = row + dr, col + dc
             if 0 <= r < self.rows and 0 <= c < self.columns:
                 value = self.cells[r][c].value()
                 if value != 'X' and value not in neighbours:
                     neighbours.append(value)
         return neighbours
     
-    #NOSSSA
-    def region_cells(self, region:int, row=None, column=None, visited=None) -> list:
-        """Devolve uma lista com todas as celulas de uma região."""
-        if visited == None:
-            visited = set()
-        cells = []
-
-        if row == None or column == None:
-            result = self.find_first_region(0, 0, region, None)
-            #Na mesma não encontramos
-            if result is None:
-                return []
-            row, column = result
-            
-        if (row, column) in visited or row < 0 or row >= self.rows  or column < 0 or column >= self.columns:
+    def adjacent_regions_cell(self, row: int, col: int) -> list:
+        if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
             return []
+        
+        directions = [(-1, 0), (0, -1), (0, 1), (1, 0)]
+        neighbours = set()
+        
+        for dr, dc in directions:
+            r, c = row + dr, col + dc
+            if 0 <= r < self.rows and 0 <= c < self.columns:
+                region = self.cells[r][c].region
+                if region is not None and region != self.cells[row][col].region:
+                    neighbours.add(region)
+        return list(neighbours)
+    
+    def adjacent_coord_cell(self, row: int, col: int) -> list:
+        if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
+            return []
+        
+        directions = [(-1, 0), (0, -1), (0, 1), (1, 0)]
+        neighbours = []
+        
+        for dr, dc in directions:
+            r, c = row + dr, col + dc
+            if 0 <= r < self.rows and 0 <= c < self.columns:
+                neighbours.append((r, c))
+        return neighbours
 
-        #Evitar visitas/calculos duplicados para certas celas
-        visited.add((row, column))
-
-        if self.cells[row][column].region == region:
-            cells.append(self.cells[row][column])
-
-        cells += self.region_cells(region, row + 1, column, visited)
-        cells += self.region_cells(region, row - 1, column, visited)
-        cells += self.region_cells(region, row, column + 1, visited)
-        cells += self.region_cells(region, row, column - 1, visited)
-
-        return cells
-
-    #Como o nome indica
     def get_value(self, row, column):
         if row < 0 or row >= self.rows or column < 0 or column >= self.columns:
             return None
         return self.cells[row][column].value()
 
-    #NOSSA
     def get_region(self, row, column):
-        return self.cells[row][column].region
-    
-    #NOSSA
-    def number_of_regions(board):
-        regions = set()
-        for column in board.cells:
-            for cell in column:
-                regions.add(cell.region)
-        return len(regions)
-    
-    #Nossa
-    def region_size(self,region):
-        return len(self.region_cells(region))
-    
-    #Podemos começar com row e column a (0,0)
-    #NOSSA
-    def find_first_region(self, row, column, region, visited):
-        if visited is None:
-            visited = set()
-
-        if (row, column) in visited or row < 0 or row >= self.rows  or column < 0 or column >= self.columns:
+        if row < 0 or row >= self.rows or column < 0 or column >= self.columns:
             return None
+        return self.cells[row][column].region
 
-        visited.add((row, column))
-
-        if self.cells[row][column].region == region:
-            return (row, column)
-        
-        right = self.find_first_region(row, column + 1, region, visited)
-        if right != None:
-            return right
-        down = self.find_first_region(row + 1, column, region, visited)
-        if down != None:
-            return down
-        
-        #Não existe região
-        return None
-    
-    #Fazer uma BFS para ver se as celas com peça (preenchidas) têm todas ligações entre si
-    def are_pieces_connected(self):
-        visited = set()
-        piece_cells = []
-
-        # Pegar todas as coordenadas com peças colocadas
-        for row in range(self.rows):
-            for col in range(self.columns):
-                if self.cells[row][col].piece in ['L', 'I', 'T', 'S']:
-                    piece_cells.append((row, col))
-
-        if not piece_cells:
-            return False  # Nenhuma peça colocada
-
-        # Iniciar BFS 
-        queue = [piece_cells[0]]
-        visited.add(piece_cells[0])
-
-        while queue:
-            r, c = queue.pop(0)
-            for direction_row, direction_col in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # 4 direções
-                new_row, new_col = r + direction_row, c + direction_col
-                if 0 <= new_row < self.rows and 0 <= new_col < self.columns:
-                    if (new_row, new_col) not in visited and self.cells[new_row][new_col].piece in ['L', 'I', 'T', 'S']:
-                        visited.add((new_row, new_col))
-                        queue.append((new_row, new_col))
-
-        # Verifica se todas as células com peças foram visitadas
-        return len(visited) == len(piece_cells)
-
-    @staticmethod
-    def parse_instance():
-        """Lê o test do standard input (stdin) que é passado como argumento
-        e retorna uma instância da classe Board.
-
-        Por exemplo:
-            $ python3 pipe.py < test-01.txt
-
-            > from sys import stdin
-            > line = stdin.readline().split()
-        """
-        #Separamos as linhas
-        lines = stdin.read().strip().splitlines()
-        #Cada linha é separada nos seus valores
-        matrix = [[int(value) for value in line.split()] for line in lines]
-        cells = [[Cell(row, column, matrix[row][column]) for column in
-        range(len(matrix[row]))] for row in range(len(matrix))]
-        #Vai criando as diferentes celulas do tabuleiro
-        for row in range(len(matrix)):
-            for column in range(len(matrix[row])):
-                cell = cells[row][column]
-                if row > 0:
-                    cell.up = matrix[row-1][column]
-                if row != len(matrix) - 1:
-                    cell.down = matrix[row+1][column]
-                if column > 0:
-                    cell.left = matrix[row][column - 1]
-                if column != len(matrix) - 1:
-                    cell.right = matrix[row][column + 1]
-        return Board(cells)
-    
-    def _show_board_(self):
-        for row in range(self.rows):
-            for column in range(self.columns):
-                print(str(self.cells[row][column].value()) + "\t", end="")
-            print("\n")
-
-    def _show_board_end_(self):
-        """Mostra o tabuleiro no formato final, com as peças colocadas."""
-        for row in range(self.rows):
-            for column in range(self.columns):
-                cell = self.cells[row][column]
-                if cell.piece == 'X':
-                    # Mostra a região da célula se a peça for 'X'
-                    print(str(cell.blocked_region) + "\t", end="")
-                else:
-                    # Mostra o valor da célula (peça ou região)
-                    print(str(cell.value()) + "\t", end="")
-            print("\n", end="")
+    def number_of_regions(self):
+        regions = set()
+        for row in self.cells:
+            for cell in row:
+                if cell.region is not None:
+                    regions.add(cell.region)
+        return len(regions)
 
     @staticmethod
     def get_anchor(variation):
@@ -353,332 +459,700 @@ class Board:
                     return i, j
         return 0, 0
 
-    #Verifica se é possível colocar uma peça no tabuleiro
-    #Pode ser usada, ou a inferior
-    #ESTA RETORNA A VARIAÇÃO QUE PODE SER COLOCADA
-    def can_place_piece(self, piece, start_row, start_col):
-        for variation in piece.variations:
-            if self.can_place_specific(variation, start_row, start_col, piece.id) and not self.verify_2x2(start_row,start_col):
-                return variation
-        return None
-    
-    #Experimenta todas as formas de colocar uma peça
     def can_place_specific(self, variation, start_row, start_col, piece_value):
         region = self.cells[start_row][start_col].region
-        adjacent_region_values = self.adjacent_values(start_row, start_col) #vemos que nas regiões vizinhas há peças
+        if region is None or self.region_values.get(region, 0) != 0:
+            return False
 
-        if self.region_values.get(region, 0) != 0:
-            return False #Já existe uma peça nesta região
         anchor_row, anchor_col = self.get_anchor(variation)
+        piece_positions = []
         
-        touches_other_piece = False
+        # Primeira passagem: verificar se pode colocar
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
                 row = start_row + i - anchor_row
                 col = start_col + j - anchor_col
-
-                if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
-                    return False #fora do tabuleiro
                 
-                cell = self.cells[row][col]
-                adjacent_values = self.adjacent_values_cell(row, col)
-                if value == '1': #Só vasmos considerar os lugares a ser ocupados
-                    if cell.piece is not None or cell.region != region or piece_value in adjacent_values or cell.piece == 'X':
-                        return False #celula já ocipada
+                if value == '1':
+                    # row = start_row + i - anchor_row
+                    # col = start_col + j - anchor_col
+
+                    if row < 0 or row >= self.rows or col < 0 or col >= self.columns:
+                        return False
                     
-                    for val in adjacent_values:
-                        if val != piece_value and val in ['L', 'I', 'T', 'S']:
-                            touches_other_piece = True
+                    cell = self.cells[row][col]
+                    if cell.piece is not None or cell.region != region:
+                        return False
+                    
+                    piece_positions.append((row, col))
 
-                
-                elif value == 'X':
+                elif value == 'X' and (row >= 0 and row < self.rows) and (col >= 0 and col < self.columns): #So consideramos o X se afeta o tabuleiro, caso contrario nem computa
+                    # row = start_row + i - anchor_row
+                    # col = start_col + j - anchor_col
+                    cell = self.cells[row][col]
                     if cell.piece is not None and cell.piece != 'X':
                         return False
-        has_neighbor_pieces = any(val in ['L', 'I', 'T', 'S'] and val != piece_value for val in adjacent_region_values)
-        if has_neighbor_pieces and not touches_other_piece:
-            return False
         
+        adjacent_piece_regions = []
+        #Não poder uma peça igual adjacente
+        for row, col in piece_positions:   
+            adjacent_values = self.adjacent_values_cell(row, col)
+            adjacent_piece_regions += self.adjacent_regions_cell(row, col)
+            for val in adjacent_values:
+                if val in ['L', 'I', 'T', 'S'] and val == piece_value:
+                    # print(f"Piece value {piece_value} and val: {val}")
+                    #print("Sou eu")
+                    return False
+        if not adjacent_piece_regions:
+            return False #A peça nem toca outras regiões
+        
+        # # Verificação expandida para detectar blocos 2x2 dentro de uma janela 3x3
+        # piece_values = {'L', 'I', 'T', 'S'}
+        # for center_row, center_col in piece_positions:
+        #     for i in range(center_row - 1, center_row + 2):  # linhas
+        #         for j in range(center_col - 1, center_col + 2):  # colunas
+        #                 square = [
+        #                     self.get_value(i, j),
+        #                     self.get_value(i, j + 1),
+        #                     self.get_value(i + 1, j),
+        #                     self.get_value(i + 1, j + 1)
+        #                 ]
+        #                 #print("CHECKINGGGGGG", square)
+        #                 if all(val in piece_values for val in square):
+        #                     return False #Criaria um 2x2
+                
+        #ESTE CA é O NOVO
+        adjacent_regions = self.adjacent_regions(region)
+        regions_with_pieces = []
+        
+        for adj_region in adjacent_regions:
+            if self.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']:
+                regions_with_pieces.append(adj_region)
+        
+        # Se há exatamente uma região adjacente com peça, forçar adjacência
+        #JUntei com a de baixo, mesma logica, aplica para qualquer dos dois casos
+
+        if (len(regions_with_pieces) == len(adjacent_regions) and regions_with_pieces):
+            # Deve tocar na peça da região adjacente obrigatoriamente
+            touches_adjacent_piece = False
+            for row, col in piece_positions:
+                adjacent_values = self.adjacent_values_cell(row, col)
+                for val in adjacent_values:
+                    if val in ['L', 'I', 'T', 'S'] and val != piece_value:
+                        touches_adjacent_piece = True
+                        break
+                if touches_adjacent_piece:
+                    break
+            
+            if not touches_adjacent_piece:
+                return False
+            
         return True
-                    
-    def place_piece(self, piece, start_row, start_col):
+
+    def can_place_piece(self, piece, start_row, start_col):
         for variation in piece.variations:
             if self.can_place_specific(variation, start_row, start_col, piece.id):
-                self.place_specific(variation, start_row, start_col, piece.id)
-                return True
-            
+                return variation
+        return None
+
     def place_specific(self, variation, start_row, start_col, piece_value):
         cell_region = self.cells[start_row][start_col].region
-        self.region_values[cell_region] = piece_value #Atualiza o valor da região
+        #print(f"Placing piece {piece_value} at ({start_row}, {start_col}) in region {cell_region}")
+        self.region_values[cell_region] = piece_value
         anchor_row, anchor_col = self.get_anchor(variation)
+        #piece_positions = []
+        
         for i, part in enumerate(variation):
             for j, value in enumerate(part):
-                if value == '1' or value == 'X': #Aqui o X determina lugares que não podem ser ocupados (criariamos uma peça 2x2)
+                if value == '1' or value == 'X':
                     row = start_row + i - anchor_row
                     col = start_col + j - anchor_col
-                    if value == '1': #Parece que se temos carateres e inteiros num array, o numpy transforma tudo a carater
-                        self.cells[row][col].piece = piece_value
-                    elif value == 'X':
-                        self.cells[row][col].piece = 'X'
-                        self.cells[row][col].blocked_region = (
+                    
+                    if 0 <= row < self.rows and 0 <= col < self.columns:
+                        # piece_positions.append((row, col))
+                        if value == '1':
+                            self.cells[row][col].piece = piece_value
+                            #piece_positions.append((row, col))
+                        elif value == 'X':
+                            self.cells[row][col].piece = 'X'
+                            self.cells[row][col].blocked_region = (
                             self.cells[row][col].region
                             if self.cells[row][col].region is not None
                             else self.cells[row][col].blocked_region
-                        )   
-                        self.cells[row][col].region = None #Esta cela deixa de ser considerada para calculos posteriores
-                        
-    #Para as regiões de dimensão 4
-    def place_piece_dimension_4(self, region):
-        pieces = [Piece('L'), Piece('I'), Piece('T'), Piece('S')]
-        region_cells = self.region_cells(region)
-        for cell in region_cells: #Tecnicamente isto devia ser só uma iteração
-            row, col = cell.row, cell.col
-            for piece in pieces:
-                variation = self.can_place_piece(piece, row, col)
-                if variation is not None:
-                    self.place_specific(variation, row, col, piece.id)
-                    return True
+                            ) 
+                            self.cells[row][col].region = None
 
-    #sem definir uma coordena, senão definindo uma região
-    def try_place_piece_in_region(self, piece, region):
-        region_cells = self.region_cells(region)
-        for cell in region_cells:
-            start_row, start_col = cell.row, cell.col
-            if self.can_place_piece(piece, start_row, start_col) != None:
-                return True         
-        return False  
+    def are_pieces_connected(self):
+        piece_cells = []
+        for row in range(self.rows):
+            for col in range(self.columns):
+                if self.cells[row][col].piece in ['L', 'I', 'T', 'S']:
+                    piece_cells.append((row, col))
 
-    # TODO: outros metodos da classe Board
+        if not piece_cells:
+            return False
 
-    def all_possibilities(self, region):
-        #Devolve todas as peças possíveis por colocar, em todas as suas variações
-        pieces = [Piece(piece_id) for piece_id in ['L', 'I', 'T', 'S']]
-        possible = []
-        region_cells = self.region_cells(region)
-        for cell in region_cells:
-            for piece in pieces:
-                for variation in piece.variations:
-                    start_row, start_col = cell.row, cell.col
-                    if self.can_place_specific(variation, start_row, start_col, piece.id):
-                        possible.append((piece.id, variation, (start_row, start_col)))
-        return possible
+        # BFS otimizada
+        visited = {piece_cells[0]}
+        queue = deque([piece_cells[0]])
+
+        while queue:
+            r, c = queue.popleft()
+            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nr, nc = r + dr, c + dc
+                if (0 <= nr < self.rows and 0 <= nc < self.columns and 
+                    (nr, nc) not in visited and 
+                    self.cells[nr][nc].piece in ['L', 'I', 'T', 'S']):
+                    visited.add((nr, nc))
+                    queue.append((nr, nc))
+
+        return len(visited) == len(piece_cells)
+
+    def has_2x2_piece_block(self):
+        """Verifica rapidamente se existe um bloco 2x2 de peças"""
+        piece_values = {'L', 'I', 'T', 'S'}
         
-    #NOSSA
-    #Devolve um dicionário com as regiões e os valores da peça na região
+        for i in range(self.rows - 1):
+            for j in range(self.columns - 1):
+                square = [
+                    self.get_value(i, j),
+                    self.get_value(i, j + 1),
+                    self.get_value(i + 1, j),
+                    self.get_value(i + 1, j + 1)
+                ]
+                if all(val in piece_values for val in square):
+                    return True
+        return False
+    
+    #Quantas celas ocupadas pode esta peça vir a conectar
+    #Podia-se contar peças, mas acho que mais vale contar celas
+    def get_connectivity_potential(self, piece_positions):
+        connectivity_score = 0
+        
+        for row, col in piece_positions:
+            adjacent_values = self.adjacent_values_cell(row, col)
+            for val in adjacent_values:
+                if val in ['L', 'I', 'T', 'S']:
+                    connectivity_score += 1
+        
+        return connectivity_score
+    
+    def get_variation_potential(self, variation, start_row, start_col):
+        cell = self.cells[start_row][start_col]
+        anchor_row, anchor_col = self.get_anchor(variation)
+        piece_positions = []
+        
+        for i, part in enumerate(variation):
+            for j, value in enumerate(part):
+                if value == '1':
+                    row = cell.row + i - anchor_row
+                    col = cell.col + j - anchor_col
+                    if 0 <= row < self.rows and 0 <= col < self.columns:
+                        piece_positions.append((row, col))
+        
+        connectivity_score = self.get_connectivity_potential(piece_positions)
+        return connectivity_score
+        
+
+    @staticmethod
+    def parse_instance():
+        lines = stdin.read().strip().splitlines()
+        matrix = [[int(value) for value in line.split()] for line in lines]
+        cells = [[Cell(row, column, matrix[row][column]) for column in
+                 range(len(matrix[row]))] for row in range(len(matrix))]
+        return Board(cells)
+
     def value_regions(self):
         region_values = {}
-        region_num = self.number_of_regions()
-        for region in range(region_num - 1):
+        for region in range(1, self.number_of_regions() + 1):
             piece_found = None
-            regions_cells = self.region_cells(region + 1) 
-            for cell in regions_cells:
-                if cell.piece is not None:
+            region_cells = self.region_cells(region)
+            for cell in region_cells:
+                if cell.piece is not None and cell.piece != 'X':
+                    #print(f"Found piece {cell.piece} in region {region} at ({cell.row}, {cell.col})")
                     piece_found = cell.piece
                     break
-            region_values[region + 1] = piece_found if piece_found != None else 0
+            #print("Region:", region, "Piece found:", piece_found)
+            region_values[region] = piece_found if (piece_found is not None) else 0
         return region_values
-    
+
     def copy(self):
-        # Cria novas células com os mesmos atributos
         new_cells = [[Cell(cell.row, cell.col, cell.region) for cell in row] for row in self.cells]
 
-        # copia também o atributo `piece`:
         for r in range(self.rows):
             for c in range(self.columns):
                 new_cells[r][c].piece = self.cells[r][c].piece
                 new_cells[r][c].blocked_region = self.cells[r][c].blocked_region
 
-        # Reconstroi as referências entre as células
-        for row in range(self.rows):
-            for col in range(self.columns):
-                cell = new_cells[row][col]
-                if row > 0:
-                    cell.up = new_cells[row - 1][col]
-                if row < self.rows - 1:
-                    cell.down = new_cells[row + 1][col]
-                if col > 0:
-                    cell.left = new_cells[row][col - 1]
-                if col < self.columns - 1:
-                    cell.right = new_cells[row][col + 1]
-
-        # Cria um novo tabuleiro com as células copiadas
         new_board = Board(new_cells)
-        new_board.region_values = dict(self.region_values)  # Copia os valores das regiões
+        new_board.region_values = dict(self.region_values)
+        #new_board.region_graph = dict(self.region_graph)  # Copiar o grafo de regiões
         return new_board
+
+    def region_piece_coord(self, region):
+        coords = []
+        region_cells = self.region_cells(region)
+        for cell in region_cells:
+            if cell.piece is not None and cell.piece != 'X':
+                coords.append((cell.row, cell.col))
+        return coords
+
+
+    def _show_board_end_(self):
+        for row in range(self.rows - 1):
+            for column in range(self.columns):
+                if column == (self.columns - 1):
+                    cell = self.cells[row][column]
+                    if cell.piece == 'X':
+                        print(str(cell.blocked_region), end="")
+                    else:
+                        print(str(cell.value()), end="")
+                else:
+                    cell = self.cells[row][column]
+                    if cell.piece == 'X':
+                        print(str(cell.blocked_region) + "\t", end="")
+                    else:
+                        print(str(cell.value()) + "\t", end="")
+            print("\n", end="")
+
+        row += 1
+        for column in range(self.columns):
+            if column == (self.columns - 1):
+                cell = self.cells[row][column]
+                if cell.piece == 'X':
+                    print(str(cell.blocked_region), end="")
+                else:
+                    print(str(cell.value()), end="")
+            else:
+                cell = self.cells[row][column]
+                if cell.piece == 'X':
+                    print(str(cell.blocked_region) + "\t", end="")
+                else:
+                    print(str(cell.value()) + "\t", end="")
     
+    def get_empty_regions(self):
+        empty_regions = []
+        for region in range(1, self.number_of_regions() + 1):
+            if self.region_values.get(region, 0) == 0:
+                empty_regions.append(region)
+        return empty_regions
     
-    #Verifica se existe uma peça 2x2 criada por uma cela especificada
-    #True: Existe uma 2x2
-    #False: Não Existe uma 2x2
-    def verify_2x2(self, row, col):
-        piece_values = ['L', 'I', 'T', 'S']
-        
-        squares = [
-        #canto superior esquerdo
-        [self.get_value(row, col), self.get_value(row, col + 1),
-         self.get_value(row + 1, col), self.get_value(row + 1, col + 1)],  
+    def get_filled_regions(self):
+        filled_regions = []
+        for region in range(1, self.number_of_regions() + 1):
+            if self.region_values.get(region, 0) not in [0, 'X']:
+                filled_regions.append(region)
+        return filled_regions
 
-        #Superior direito
-        [self.get_value(row, col), self.get_value(row, col - 1),
-         self.get_value(row + 1, col), self.get_value(row + 1, col - 1)],  
+    def build_region_graph(self): #Ao inicio está tudo ligado com tudo
+        graph = {region: set() for region in range(1, self.number_of_regions() + 1)}
+        empty_regions = self.get_empty_regions()
+        filled_regions = self.get_filled_regions()
+        visited = set()
+        for region in graph:
+            if region in visited:
+                pass
+            neighbours = self.adjacent_region_graph(region)
+            for neighbour in neighbours:
+                if neighbour in visited:
+                    pass
 
-        #Inferior esquerdo
-        [self.get_value(row, col), self.get_value(row, col + 1),
-         self.get_value(row - 1, col), self.get_value(row - 1, col + 1)],  
-         
-        #Inferior direito
-        [self.get_value(row, col), self.get_value(row, col - 1),
-         self.get_value(row - 1, col), self.get_value(row - 1, col - 1)]   
-        ]
+                if region in empty_regions and neighbour in empty_regions:
+                    graph[region].add(neighbour)
+                    graph[neighbour].add(region)  #nos dois sentidos
 
-        for square in squares:
-            count = 0
-            for value in square:
-                if value in piece_values:
-                    count += 1
-            if count == 4:
-                return True #Existe uma peça 2x2
-            
-        return False #Não existe uma peça 2x2
+                elif region in filled_regions and neighbour in filled_regions:
+                    my_piece_coord = self.region_piece_coord(region)
+                    neighbour_piece_coord = self.region_piece_coord(neighbour)
+                    pieces_touch = False
+
+                    for piece_row, piece_col in my_piece_coord:
+                        adjacent_coords = self.adjacent_coord_cell(piece_row, piece_col)
+                        if any((r, c) in neighbour_piece_coord for r, c in adjacent_coords):
+                            pieces_touch = True
+                            break
+
+                    if pieces_touch:
+                        graph[region].add(neighbour)
+                        graph[neighbour].add(region)
+                        break
+
+
+                elif region in filled_regions and neighbour in empty_regions:
+                    my_piece_coord = self.region_piece_coord(region)
+                    for piece_row, piece_col in my_piece_coord:
+                        adjacent_regs = self.adjacent_regions_cell(piece_row, piece_col)
+                        if neighbour in adjacent_regs:
+                            graph[region].add(neighbour)
+                            graph[neighbour].add(region)
+                            break
+
+                elif region in empty_regions and neighbour in filled_regions:
+                    neighbour_piece_coord = self.region_piece_coord(neighbour)
+                    for row, col in neighbour_piece_coord:
+                        adjacent_regs = self.adjacent_regions_cell(row, col)
+                        if region in adjacent_regs:
+                            graph[region].add(neighbour)
+                            graph[neighbour].add(region)
+                            break
+                visited.add(neighbour) #Adiciona o vizinho ao conjunto de visitados
+            visited.add(region)
+                
+
+        #print("Grafo de regiões construído:", graph)
+        return graph
+
+    #Depois de colocar uma peça, atualizar o grafo de regiões
+    def update_region_graph(self, region):  
+        new_adjacent = set()  
+        empty_regions = self.get_empty_regions()
+        filled_regions = self.get_filled_regions()
+        adjacent_to_piece = []
+        piece_positions = self.region_piece_coord(region)
+        for row, col in piece_positions:
+            adjacent_to_cell = self.adjacent_regions_cell(row, col)
+            for reg in adjacent_to_cell:
+                if reg not in adjacent_to_piece:
+                    adjacent_to_piece.append(reg)
+
+        #print("Adjacento to piece:", adjacent_to_piece)
+        # print("Empty regions:", empty_regions)
+        # print("Filled regions:", filled_regions)
+        for adj_region in adjacent_to_piece:
+            if adj_region != region: #Evitar contar a própria região
+
+                if adj_region in empty_regions: #estamos a ver a minha região com peça e uma sem peça
+                    new_adjacent.add(adj_region)
+
+                elif adj_region in filled_regions: #As duas regiões têm peça
+                    #new_adjacent.add(adj_region)
+
+                    neighbour_piece_coord = self.region_piece_coord(adj_region)
+                    pieces_touch = False
+
+                    for piece_row, piece_col in piece_positions:
+                        adjacent_coords = self.adjacent_coord_cell(piece_row, piece_col)
+                        if any((r, c) in neighbour_piece_coord for r, c in adjacent_coords):
+                            pieces_touch = True
+                            break
+
+                    if pieces_touch:
+                        #print("ANTÂO")
+                        new_adjacent.add(adj_region)
+
+        # Atualizar o grafo de regiões
+        self.region_graph[region] = new_adjacent
+
+        #Manter a bi-direção
+        for adj in new_adjacent:
+            self.region_graph[adj].add(region)
+
+        #remover na bidirecionalidade
+        for r in self.region_graph.keys():
+            if r != region and region in self.region_graph[r] and r not in new_adjacent:
+                #print("REMOVING REGION:", region, "FROM", r)
+                self.region_graph[r].remove(region)
+        # print("PINCHES SAPOS")
 
 class Nuruomino(Problem):
-    state_id = 0 
     def __init__(self, board: Board):
-        """O construtor especifica o estado inicial."""
         self.board = board
         self.initial = NuruominoState(board)
-        self.regions = board.value_regions()
+        
+        # Pré-computar possibilidades para cada região (otimização major)
         self.possibilities = {}
-        for region in range(board.number_of_regions()):
-            self.possibilities[region + 1] = board.all_possibilities(region + 1)
+        self.connectivity_scores = {}
+        self._precompute_all_possibilities()
+
+    def _precompute_all_possibilities(self):
+        """Pré-computa todas as possibilidades para cada região"""
+        #pieces = [Piece(piece_id) for piece_id in ['L', 'I', 'T', 'S']]
+        pieces = [Piece(piece_id) for piece_id in ['T', 'I', 'L', 'S']]
+
+        
+        for region in range(1, self.board.number_of_regions() + 1):
+            possibilities = []
+            connectivity_scores = []
+            region_cells = self.board.region_cells(region)
+            
+            for cell in region_cells:
+                for piece in pieces:
+                    for variation in piece.variations:
+                        if self.board.can_place_specific(variation, cell.row, cell.col, piece.id):
+                            # Calcular posições da peça para o connectivity sciore
+                            anchor_row, anchor_col = self.board.get_anchor(variation)
+                            piece_positions = []
+                            
+                            for i, part in enumerate(variation):
+                                for j, value in enumerate(part):
+                                    if value == '1':
+                                        row = cell.row + i - anchor_row
+                                        col = cell.col + j - anchor_col
+                                        if 0 <= row < self.board.rows and 0 <= col < self.board.columns:
+                                            piece_positions.append((row, col))
+                            
+                            connectivity_score = self.board.get_connectivity_potential(piece_positions)
+                            
+                            possibilities.append((piece.id, variation, (cell.row, cell.col)))
+                            connectivity_scores.append(connectivity_score)
+
+
+            self.possibilities[region] = possibilities
+            self.connectivity_scores[region] = connectivity_scores
 
     def actions(self, state: NuruominoState):
-        """Retorna uma lista de ações que podem ser executadas a
-        partir do estado passado como argumento."""
         if state is None:
             return []
+        #
+        #print(f"ID de actions: {state.id}")
+        filled_regions = state.board.get_filled_regions()
+        if not filled_regions:
+            empty_regions = state.get_empty_regions()
+        else:
+            empty_regions = state.get_empty_adjacent_cache()
+            # #print("TRincão joga hoje")
+            # adjacents_final = []
+            # for reg in filled_regions:
+            #     #print("Reg: ", reg)
+                
+            #     adjacents = state.board.adjacent_regions(reg)
+            #     #print("Adjacents:", adjacents)
+            #     for adj in adjacents:
+            #         if adj not in filled_regions and adj not in adjacents_final:
+            #             adjacents_final.append(adj)    
+            # #print("Adjacents final:", adjacents_final)      
+            # empty_regions = adjacents_final
+
+        #empty_regions = state.get_empty_regions()
+        #for empty_region in empty_regions:
+            #print(f"Region thats empty: {empty_region}")
+        if not empty_regions:
+            return []
         
-        actions = list()
-        current_regions = state.region_values
-        for region, item in current_regions.items():
-            if item == 0:
-                for piece_id, variation, (row, col) in self.possibilities[region]:
-                    if state.board.can_place_specific(variation, row, col, piece_id):
-                        actions.append((Piece(piece_id), variation, row, col))
+
+        def region_priority(region):
+            num_possibilities = len(self.possibilities.get(region, []))
+            if num_possibilities == 0:
+                return (float('inf'), 0)
+            
+            connectivity_score = state.get_connectivity_score(region)
+            
+            # Priorizar: menos possibilidades, maior conectividade
+            return (num_possibilities, -connectivity_score)
+        
+        #Tirei a menor região
+        region = min(empty_regions, key=region_priority)
+        #sorted_regions = sorted(empty_regions, key=region_priority)
+        #print("SORTED REGIONS:", sorted_regions)
+        
+        # Escolher a região com menos possibilidades (MRV - Most Constraining Variable)
+        #region = min(empty_regions, key=lambda r: len(self.possibilities.get(r, [])))
+        #print(f"EASIER REGION: {region}")
+        #print(f"Porque tem : {len(self.possibilities.get(region, []))} possibilidades")
+        
+        actions = []
+        # for piece_id, variation, (row, col) in self.possibilities.get(region, []):
+        #     print(f"Action: {piece_id}, {variation}, {row}, {col}")
+        #     if state.board.can_place_specific(variation, row, col, piece_id):
+        #         #
+                
+        #         print(f"Action: {piece_id}, {variation}, {row}, {col}")
+        #         actions.append((Piece(piece_id), variation, row, col))
+
+
+        connect_scores = []
+        region_possibilities = self.possibilities.get(region, [])
+        for _, variation, (row, col) in region_possibilities:
+                var_score = self.board.get_variation_potential(variation, row, col)
+                connect_scores.append(var_score)
+
+        self.connectivity_scores[region] = connect_scores
+        region_connectivity_scores = connect_scores
+
+
+        # for region in sorted_regions:
+        #     region_possibilities = self.possibilities.get(region, [])
+        #     #region_connectivity_scores = self.connectivity_scores.get(region, [])
+        #     #EXPERIMENTAR
+        #     connect_scores = []
+        #     for _, variation, (row, col) in region_possibilities:
+        #         var_score = self.board.get_variation_potential(variation, row, col)
+        #         connect_scores.append(var_score)
+        #     self.connectivity_scores[region] = connect_scores
+        #     region_connectivity_scores = self.connectivity_scores.get(region, [])
+
+        
+            # Combinar possibilidades com scores e ordenar por conectividade
+        possibility_data = list(zip(region_possibilities, region_connectivity_scores))
+        possibility_data.sort(key=lambda x: -x[1])  # Ordenar por conectividade decrescente
+    
+        for (piece_id, variation, (row, col)), ___ in possibility_data:
+            if state.board.can_place_specific(variation, row, col, piece_id):
+                #print(f"Action: {piece_id}, {variation}, {row}, {col}")
+                actions.append((Piece(piece_id), variation, row, col))
+            
+        #for piece, variation, row, col in actions:
+            #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {self.board.get_region(row, col)}")
         return actions
 
+
     def result(self, state: NuruominoState, action):
-        """Retorna o estado resultante de executar a 'action' sobre
-        'state' passado como argumento. A ação a executar deve ser uma
-        das presentes na lista obtida pela execução de
-        self.actions(state)."""    
         piece, variation, row, col = action
-        new_board = state.board.copy()  # Cria uma cópia do tabuleiro atual
+        new_board = state.board.copy()
+        #new_board.region_graph = dict(new_board.region_graph)  # Copiar o grafo de regiões
+        #print(f"O meu ID: {state.id}")
 
-        if new_board.can_place_specific(variation, row, col, piece.id):
+        #if new_board.can_place_specific(variation, row, col, piece.id):
+        if True:  # Sempre verdadeiro, pois já verificamos em actions
             new_board.place_specific(variation, row, col, piece.id)
+            #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
+            #new_board._show_board_end_()
+            #print(" ")
+                
+           
+            # Verificação rápida de 2x2
+            if new_board.has_2x2_piece_block():
+                #print("Criamos um 2x2 se formos colocar")
+                return None
+            
+            
+            
+            #state.build_region_graph()  # Atualizar o grafo de regiões após colocar a peça
+            
+            # if state.islands_in_graph():
+            #     #print(new_board.islands_in_graph())
+            #     #print("Criamos uma ilha se formos colocar")
+            #     #print(state.board.region_graph)
+            #     #print(new_board.region_graph)        
+            #     # new_board._show_board_end_()
+            #     # print(" ")
+            #     return None
+                        
+            # region = new_board.get_region(row, col)
+            # adjacent_regions = new_board.adjacent_regions(region)
+            # for adj_region in adjacent_regions:
+            #     if all(new_board.region_values.get(adj_region, 0) in ['L', 'I', 'T', 'S']):
+            # print("Empty regions:", new_board.get_empty_regions())
+            # print("Filled regions:", new_board.get_filled_regions())
+            # print("Grafo de adjacencias:", new_board.region_graph)
 
-            for i in range(state.board.rows - 1):
-                for j in range(state.board.columns - 1):
-                    square = [
-                        new_board.get_value(i, j),
-                        new_board.get_value(i, j+1),
-                        new_board.get_value(i+1, j),
-                        new_board.get_value(i+1, j+1)
-                    ]
-                    # conta todas as células “ocupadas” (peça diferente de None e diferente de 'X')
-                    if sum(1 for v in square if v in ['L','I','T','S']) == 4:
-                        return None
-                    
-            new_values = dict(state.region_values) #Copia para alterar só a copia criada
-            piece_region = new_board.get_region(row, col)
-            new_values[piece_region] = piece.id  # Atualiza o valor da região com o ID da peça colocada
-            sucessor = NuruominoState(new_board)
-            sucessor.region_values = new_values  # Atualiza os valores das regiões no novo estado
-            return sucessor 
+
+            #print(f"We placed piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
+
+            successor = NuruominoState(new_board)
+            successor.region_graph = {k: v.copy() for k, v in state.region_graph.items()} #copia o grafo
+            placed_region = new_board.get_region(row, col)
+            successor.update_region_graph_incremental(placed_region)
+
+            if successor.islands_in_graph():
+                #print("Criamos uma ilha se formos colocar")
+                #print(successor.board.region_graph)
+                return None
+
+            #print(f"And created: {successor.id}")
+            #new_board._show_board_end_()
+                   
+            return successor 
         
         return None
 
     def goal_test(self, state: NuruominoState):
-        """Retorna True se e só se o estado passado como argumento é
-        um estado objetivo. Deve verificar se todas as posições do tabuleiro
-        estão preenchidas de acordo com as regras do problema."""
-
         if state is None:
-            return False
-
-        current_regions = state.board.value_regions()
-
-        for i in range(state.board.rows - 1):
-            for j in range(state.board.columns - 1):
-                square = [
-                    state.board.get_value(i, j),
-                    state.board.get_value(i, j+1),
-                    state.board.get_value(i+1, j),
-                    state.board.get_value(i+1, j+1)
-                ]
-                # conta todas as células “ocupadas”
-                if sum(1 for v in square if v in ['L','I','T','S']) == 4:
-                    return False
-
-        for region, value in current_regions.items():
-            if value == 0:
-                return False
-            
-        if not state.board.are_pieces_connected():
+            #print("Action deixou de ser valida")
             return False
         
+        if state.id == 0:
+            #print("State is initial, not a goal")
+            state._initialize_region_graph()
+            return False
+        
+        #print(f"Testing goal for state {state.id}")
+        #print(" ")
+        # Verificar se todas as regiões estão preenchidas
+        current_regions = state.board.value_regions()
+        for region, value in current_regions.items():
+            if value == 0:
+                #print("Ha regiões vazias")
+                return False
+
+        # Verificar conectividade das peças
+        if not state.board.are_pieces_connected():
+            #print("Não estão ligadas")
+            return False
+        
+        # Verificação final de 2x2
+        # if state.board.has_2x2_piece_block():
+        #     #print("Criou-se um 2x2")
+        #     return False
+
+        #print("ID: ", state.id)
         return True
 
     def h(self, node: Node):
-        """Função heuristica utilizada para a procura A*."""
-        count=0
-        for region, value in self.regions.items():
-            if region ==0:
-                count+=1
-            cost = len(self.regions) - count
-            cost2 = self.board.region_size(region)
-        #node.depth
-        #node.path_cost= cost 
-        return 0.8*cost+0.2*cost2
+        state = node.state
+        if state is None:
+            return float('inf')
         
-        #count(self.regions ==0)
+        empty_regions = state.get_empty_regions()
+        num_empty = len(empty_regions)
+        
+        if num_empty == 0:
+            return 0
+        
+        heuristic_value = 0
+        
+        for region in empty_regions:
+            possibilities = len(self.possibilities.get(region, []))
+            if possibilities == 0:
+                return float('inf')  # Estado impossível
+            
+            # Penalização por baixo número de possibilidades
+            constraint_penalty = 1.0 / possibilities
+            
+            # Bonus para alta conectividade
+            connectivity_score = state.get_connectivity_score(region)
+            connectivity_bonus = connectivity_score * 0.1
+            
+            # Penalização por isolamento (regiões sem peças adjacentes)
+            isolation_penalty = 0.2 if connectivity_score == 0 else 0
+            
+            heuristic_value += (constraint_penalty + isolation_penalty - connectivity_bonus)
+        
+        return num_empty + heuristic_value
 
 if __name__ == "__main__":
-    #TEST DO NURUOMINO__________________________________________________________________
+    # import time
+    # start_time = time.time()
     board = Board.parse_instance()
 
-    for region in range(board.number_of_regions()):
-        if board.region_size(region + 1) == 4:
-            board.place_piece_dimension_4(region + 1)
-    board.region_values = board.value_regions()
+    # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
+    for region in range(1, board.number_of_regions() + 1):
+        if board.region_size(region) == 4:
+            pieces = [Piece('L'), Piece('I'), Piece('T'), Piece('S')]
+            region_cells = board.region_cells(region)
+            for cell in region_cells:
+                placed = False
+                for piece in pieces:
+                    variation = board.can_place_piece(piece, cell.row, cell.col)
+                    if variation is not None:
+                        board.place_specific(variation, cell.row, cell.col, piece.id)
+                        placed = True
+                        break
+                if placed:
+                    break
     
     problem = Nuruomino(board)
-    #print(f"problem.h is {problem.h} (type: {type(problem.h)})")
-    node = Node(problem.initial)
-    #print(f"problem.h is {node.state} (type: {type(node.state)})") 
+
     solution = depth_first_graph_search(problem)
-    #solution = astar_search(problem,problem.h(node),True)
-    #solution = astar_search(problem,problem.h(node),True)
-    #solution = astar_search(problem,True)
-    #solution = uniform_cost_search(problem,True)
-    # Mostra o resultado
+
+    
     if solution:
+        #print("\n")
         solution.state.board._show_board_end_()
-        #print("\n", end="")
+        #end_time = time.time()
+        # print("\n")
+        # print(f"Test completed in {end_time - start_time:.2f} seconds")
+
     else:
         print("Nenhuma solução encontrada")
 
-    #TEST A*
-    # problem = Nuruomino(board)
-    # # #print(f"problem.h is {problem.h} (type: {type(problem.h)})")
-    # stateinit =NuruominoState(board)
-    # node = Node(stateinit)
-    # # #print(f"problem.h is {node.state} (type: {type(node.state)})") 
-    # #solution = depth_first_graph_search(problem)
-    # solution = astar_search(problem,problem.h(node),True)
-    # if solution:
-    #     solution.state.board._show_board_end_()
-    #     print("\n", end="")
-    # else:
-    #     print("Nenhuma solução encontrada")
-    #     board._show_board_()
