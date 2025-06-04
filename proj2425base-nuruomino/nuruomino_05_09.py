@@ -378,7 +378,6 @@ class Board:
                 row = start_row + i - anchor_row
                 col = start_col + j - anchor_col
                 
-
                 if value == '1':
                     # row = start_row + i - anchor_row
                     # col = start_col + j - anchor_col
@@ -411,6 +410,21 @@ class Board:
                     return False
         if not adjacent_piece_regions:
             return False #A peça nem toca outras regiões
+        
+        # # Verificação expandida para detectar blocos 2x2 dentro de uma janela 3x3
+        # piece_values = {'L', 'I', 'T', 'S'}
+        # for center_row, center_col in piece_positions:
+        #     for i in range(center_row - 1, center_row + 2):  # linhas
+        #         for j in range(center_col - 1, center_col + 2):  # colunas
+        #                 square = [
+        #                     self.get_value(i, j),
+        #                     self.get_value(i, j + 1),
+        #                     self.get_value(i + 1, j),
+        #                     self.get_value(i + 1, j + 1)
+        #                 ]
+        #                 #print("CHECKINGGGGGG", square)
+        #                 if all(val in piece_values for val in square):
+        #                     return False #Criaria um 2x2
                 
         #ESTE CA é O NOVO
         adjacent_regions = self.adjacent_regions(region)
@@ -874,13 +888,14 @@ class Nuruomino(Problem):
         piece, variation, row, col = action
         new_board = state.board.copy()
         #new_board.region_graph = dict(new_board.region_graph)  # Copiar o grafo de regiões
-        #print(f"O meu ID: {state.id}")
+        print(f"O meu ID: {state.id}")
 
-        if new_board.can_place_specific(variation, row, col, piece.id):
+        #if new_board.can_place_specific(variation, row, col, piece.id):
+        if True:  # Sempre verdadeiro, pois já verificamos em actions
             new_board.place_specific(variation, row, col, piece.id)
-            #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
-            #new_board._show_board_end_()
-            #print(" ")
+            print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
+            new_board._show_board_end_()
+            print(" ")
                 
            
             # Verificação rápida de 2x2
@@ -908,12 +923,12 @@ class Nuruomino(Problem):
             # print("Grafo de adjacencias:", new_board.region_graph)
 
 
-            #print(f"We placed piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
+            print(f"We placed piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
             successor = NuruominoState(new_board)
-            #print(f"And created: {successor.id}")
-            #new_board._show_board_end_()
+            print(f"And created: {successor.id}")
+            new_board._show_board_end_()
                    
-            return successor
+            return successor 
         
         return None
 
@@ -936,9 +951,9 @@ class Nuruomino(Problem):
             return False
         
         # Verificação final de 2x2
-        if state.board.has_2x2_piece_block():
-            #print("Criou-se um 2x2")
-            return False
+        # if state.board.has_2x2_piece_block():
+        #     #print("Criou-se um 2x2")
+        #     return False
 
         #print("ID: ", state.id)
         return True
@@ -976,8 +991,8 @@ class Nuruomino(Problem):
         return num_empty + heuristic_value
 
 if __name__ == "__main__":
-    import time
-    start_time = time.time()
+    # import time
+    # start_time = time.time()
     board = Board.parse_instance()
 
     # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
@@ -1002,10 +1017,11 @@ if __name__ == "__main__":
 
     
     if solution:
-        solution.state.board._show_board_end_()
-        end_time = time.time()
         print("\n")
-        print(f"Test completed in {end_time - start_time:.2f} seconds")
+        solution.state.board._show_board_end_()
+        #end_time = time.time()
+        # print("\n")
+        # print(f"Test completed in {end_time - start_time:.2f} seconds")
 
     else:
         print("Nenhuma solução encontrada")
