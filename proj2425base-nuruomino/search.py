@@ -420,7 +420,7 @@ def astar_search(problem, h=None, display=False):
     You need to specify the h function when you call astar_search, or
     else in your Problem subclass."""
     h = memoize(h or problem.h, 'h')
-    return best_first_graph_search(problem, lambda n: n.path_cost + problem.h(n), display)
+    return best_first_graph_search(problem, lambda n: n.path_cost + h(n), display)
 
 
 # ______________________________________________________________________________

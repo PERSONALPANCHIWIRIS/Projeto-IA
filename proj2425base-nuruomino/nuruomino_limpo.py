@@ -963,7 +963,7 @@ class Nuruomino(Problem):
         connect_scores = []
         region_possibilities = self.possibilities.get(region, [])
         for _, variation, (row, col) in region_possibilities:
-                var_score = self.board.get_variation_potential(variation, row, col)
+                var_score = state.board.get_variation_potential(variation, row, col)
                 connect_scores.append(var_score)
 
         self.connectivity_scores[region] = connect_scores
