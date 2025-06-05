@@ -1156,3 +1156,4 @@ if __name__ == "__main__":
     else:
         print("Nenhuma solução encontrada")
 
+#_____________________ESTA VERSÂO PASSA 13

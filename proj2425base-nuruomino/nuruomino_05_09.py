@@ -1076,3 +1076,5 @@ if __name__ == "__main__":
     else:
         print("Nenhuma solução encontrada")
 
+#ESTE CA PASSA 11 TESTES
+
