@@ -1017,7 +1017,7 @@ class Nuruomino(Problem):
         
             # Combinar possibilidades com scores e ordenar por conectividade
         possibility_data = list(zip(region_possibilities, region_connectivity_scores))
-        possibility_data.sort(key=lambda x: -x[1])  # Ordenar por conectividade decrescente
+        possibility_data.sort(key=lambda x: x[1])  # Ordenar por conectividade decrescente
     
         for (piece_id, variation, (row, col)), ___ in possibility_data:
             if state.board.can_place_specific(variation, row, col, piece_id):
@@ -1035,14 +1035,14 @@ class Nuruomino(Problem):
         piece, variation, row, col = action
         new_board = state.board.copy()
         #new_board.region_graph = dict(new_board.region_graph)  # Copiar o grafo de regiões
-        print(f"O meu ID: {state.id}")
+        #print(f"O meu ID: {state.id}")
 
         #if new_board.can_place_specific(variation, row, col, piece.id):
         if True:  # Sempre verdadeiro, pois já verificamos em actions
             new_board.place_specific(variation, row, col, piece.id)
-            print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
-            new_board._show_board_end_()
-            print(" ")
+            #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
+            #new_board._show_board_end_()
+            #print(" ")
                 
            
             # Verificação rápida de 2x2
@@ -1084,8 +1084,8 @@ class Nuruomino(Problem):
                 #print(successor.board.region_graph)
                 return None
 
-            print(f"And created: {successor.id}")
-            new_board._show_board_end_()
+            #print(f"And created: {successor.id}")
+            #new_board._show_board_end_()
                    
             return successor 
         
@@ -1160,8 +1160,8 @@ class Nuruomino(Problem):
         return num_empty + heuristic_value
 
 if __name__ == "__main__":
-    import time
-    start_time = time.time()
+    # import time
+    # start_time = time.time()
     board = Board.parse_instance()
 
     # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
@@ -1188,9 +1188,9 @@ if __name__ == "__main__":
     if solution:
         #print("\n")
         solution.state.board._show_board_end_()
-        end_time = time.time()
-        print("\n")
-        print(f"Test completed in {end_time - start_time:.2f} seconds")
+        # end_time = time.time()
+        # print("\n")
+        # print(f"Test completed in {end_time - start_time:.2f} seconds")
 
     else:
         print("Nenhuma solução encontrada")
