@@ -87,6 +87,7 @@ class NuruominoState:
         self._connectivity_score_cache = {}
         self._empty_adjacent_cache = []
 
+
     def __lt__(self, other):
         return self.id < other.id
     
@@ -982,7 +983,6 @@ class Nuruomino(Problem):
             #print(f"Region thats empty: {empty_region}")
         if not empty_regions:
             return []
-        
 
         def region_priority(region):
             num_possibilities = len(self.possibilities.get(region, []))
@@ -995,7 +995,63 @@ class Nuruomino(Problem):
             return (num_possibilities, -connectivity_score)
         
         #Tirei a menor região
-        region = min(empty_regions, key=region_priority)
+        regions = sorted(empty_regions, key=region_priority)
+        #print(f"Regions sorted by priority: {regions}")
+
+        if len(regions) > 1:
+            if region_priority(regions[0]) == region_priority(regions[1]):
+                #print("Emapte: ", regions[0], "e", regions[1])
+                mass_tuple = (0, 0)
+                center_mass = 0
+
+                num_pieces = (len(filled_regions) if len(filled_regions) != 0 else 1)
+                for region in filled_regions:
+                    region_cells = state.board.region_cells(region)
+                    for cell in region_cells:
+                        if cell.piece is not None and cell.piece != 'X':
+                            row, col = cell.row, cell.col
+                            mass_tuple = (mass_tuple[0] + row, mass_tuple[1] + col)
+                    #mass_tuple = (mass_tuple[0] + row, mass_tuple[1] + col)
+                
+                center_mass = (mass_tuple[0] / (num_pieces * 4), mass_tuple[1] / (num_pieces * 4))
+                #print("Center, mass; ", center_mass)
+
+                coords_1 = (0,0)
+                coords_2 = (0,0)
+                region_1_cells = state.board.region_cells(regions[0])
+                region_2_cells = state.board.region_cells(regions[1])
+
+                for cell in region_1_cells:
+                    row, col = cell.row, cell.col
+                    coords_1 = (coords_1[0] + row, coords_1[1] + col)
+
+                coords_1 = (coords_1[0]/len(region_1_cells), coords_1[1]/len(region_1_cells))
+                #print("Coords 1: ", coords_1)
+
+                dist_1 = abs((coords_1[0] - center_mass[0]) + (coords_1[1] - center_mass[1]))
+                result_1 = (regions[0], dist_1)
+
+
+                for cell in region_2_cells:
+                    row, col = cell.row, cell.col
+                    coords_2 = (coords_2[0] + row, coords_2[1] + col)
+
+                coords_2 = (coords_2[0]/len(region_2_cells), coords_2[1]/len(region_2_cells))
+                #print("Coords 2: ", coords_2)
+
+                dist_2 = abs((coords_2[0] - center_mass[0]) + (coords_2[1] - center_mass[1]))
+                result_2 = (regions[1], dist_2)
+
+                #print("REsults: ", result_1, result_2)
+                region = min(result_1, result_2, key=lambda x: x[1])[0]  # Escolher a região mais próxima do centro de massa  
+            else:
+                region = regions[0]
+
+        else:
+            region = regions[0]  
+            #print("Só há uma região vazia, vamos jogar aí")
+        #print("REGION: ", region)
+
         #sorted_regions = sorted(empty_regions, key=region_priority)
         #print("SORTED REGIONS:", sorted_regions)
         
@@ -1112,6 +1168,7 @@ class Nuruomino(Problem):
             #print(f"And created: {successor.id}")
             #new_board._show_board_end_()
                    
+            #print(f"Placing piece {piece.id} at ({row}, {col}) with variation {variation} region {new_board.get_region(row, col)}")
             return successor 
         
         return None
@@ -1185,8 +1242,8 @@ class Nuruomino(Problem):
         return num_empty + heuristic_value
 
 if __name__ == "__main__":
-    import time
-    start_time = time.time()
+    # import time
+    # start_time = time.time()
     board = Board.parse_instance()
 
     # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
@@ -1219,9 +1276,9 @@ if __name__ == "__main__":
         #print("\n")
         solution.state.board._show_board_end_()
         #print("Ultimo state: ", solution.state.id)
-        end_time = time.time()
-        print("\n")
-        print(f"Test completed in {end_time - start_time:.2f} seconds")
+        #end_time = time.time()
+        # print("\n")
+        # print(f"Test completed in {end_time - start_time:.2f} seconds")
 
     else:
         print("Nenhuma solução encontrada")
