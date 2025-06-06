@@ -531,6 +531,28 @@ class Board:
         if not adjacent_piece_regions:
             return False #A peça nem toca outras regiões
         
+        #Verificação do 2x2
+        # for i in range(self.rows - 1):
+        #     for j in range(self.columns - 1):
+        #         square = []
+        #         directions = [(1, 0), (0, 1), (1, 1), (0, 0)]
+        #         for row, col in directions:
+        #             if (i + row, j + col) in piece_positions:
+        #                 value = 'L' #placeholder para a verificação
+        #                 square.append(value)
+        #             else:    
+        #                 value = self.get_value(i + row, j + col)
+        #                 square.append(value)
+
+        #         # square = [
+        #         #     self.get_value(i, j),
+        #         #     self.get_value(i, j + 1),
+        #         #     self.get_value(i + 1, j),
+        #         #     self.get_value(i + 1, j + 1)
+        #         # ]
+        #         if all(val in ['L', 'I', 'S', 'T'] for val in square):
+        #             return False #Criaria um 2x2
+        
         # # Verificação expandida para detectar blocos 2x2 dentro de uma janela 3x3
         # piece_values = {'L', 'I', 'T', 'S'}
         # for center_row, center_col in piece_positions:
@@ -634,7 +656,6 @@ class Board:
         return len(visited) == len(piece_cells)
 
     def has_2x2_piece_block(self):
-        """Verifica rapidamente se existe um bloco 2x2 de peças"""
         piece_values = {'L', 'I', 'T', 'S'}
         
         for i in range(self.rows - 1):
@@ -893,7 +914,6 @@ class Nuruomino(Problem):
         self._precompute_all_possibilities()
 
     def _precompute_all_possibilities(self):
-        """Pré-computa todas as possibilidades para cada região"""
         #pieces = [Piece(piece_id) for piece_id in ['L', 'I', 'T', 'S']]
         pieces = [Piece(piece_id) for piece_id in ['T', 'I', 'L', 'S']]
 
@@ -935,10 +955,15 @@ class Nuruomino(Problem):
         #print(f"ID de actions: {state.id}")
         filled_regions = state.board.get_filled_regions()
         #print(f"Filled regions: {filled_regions}")
+
+
         if not filled_regions:
             empty_regions = state.get_empty_regions()
         else:
             empty_regions = state.get_empty_adjacent_cache()
+        #empty_regions = state.get_empty_regions()
+
+
             # #print("TRincão joga hoje")
             # adjacents_final = []
             # for reg in filled_regions:
@@ -1160,8 +1185,8 @@ class Nuruomino(Problem):
         return num_empty + heuristic_value
 
 if __name__ == "__main__":
-    # import time
-    # start_time = time.time()
+    import time
+    start_time = time.time()
     board = Board.parse_instance()
 
     # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
@@ -1181,18 +1206,30 @@ if __name__ == "__main__":
                     break
     
     problem = Nuruomino(board)
+    # end_time = time.time()
+    # print("\n")
+    # print(f"Test completed in {end_time - start_time:.2f} seconds")
 
+    #solution = breadth_first_graph_search(problem)
     solution = depth_first_graph_search(problem)
-    #solution = depth_first_tree_search(problem)
+    # #solution = depth_first_tree_search(problem)
+    #solution = astar_search(problem, h=problem.h)
     
     if solution:
         #print("\n")
         solution.state.board._show_board_end_()
-        # end_time = time.time()
-        # print("\n")
-        # print(f"Test completed in {end_time - start_time:.2f} seconds")
+        #print("Ultimo state: ", solution.state.id)
+        end_time = time.time()
+        print("\n")
+        print(f"Test completed in {end_time - start_time:.2f} seconds")
 
     else:
         print("Nenhuma solução encontrada")
 
 #_____________________EDITAR
+# board.place_specific((('1', '1', '1'), ('1', 'X', '0')), 8, 2, 'L')
+# board._show_board_end_()
+# print("\n")
+# cells = board.region_cells(15)
+# for cell in cells:
+#     print(f"Cell at ({cell.row}, {cell.col}): Piece = {cell.piece}, Region = {cell.region}, Blocked Region = {cell.blocked_region}")
