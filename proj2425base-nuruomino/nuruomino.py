@@ -1220,8 +1220,8 @@ if __name__ == "__main__":
         solution.state.board._show_board_end_()
         #print("Ultimo state: ", solution.state.id)
         end_time = time.time()
-        print("\n")
-        print(f"Test completed in {end_time - start_time:.2f} seconds")
+        # print("\n")
+        # print(f"Test completed in {end_time - start_time:.2f} seconds")
 
     else:
         print("Nenhuma solução encontrada")
