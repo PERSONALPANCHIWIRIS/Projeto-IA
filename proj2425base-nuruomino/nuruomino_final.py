@@ -918,7 +918,7 @@ class Nuruomino(Problem):
             #print("Não estão ligadas")
             return False
         
-        print("ID: ", state.id)
+        #print("ID: ", state.id)
         return True
 
     def h(self, node: Node):
@@ -955,7 +955,7 @@ class Nuruomino(Problem):
 
 if __name__ == "__main__":
     # import time
-    start_time = time.time()
+    # start_time = time.time()
     board = Board.parse_instance()
 
     # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
@@ -988,9 +988,9 @@ if __name__ == "__main__":
         #print("\n")
         solution.state.board._show_board_end_()
         #print("Ultimo state: ", solution.state.id)
-        end_time = time.time()
-        print("\n")
-        print(f"Test completed in {end_time - start_time:.2f} seconds")
+        # end_time = time.time()
+        # print("\n")
+        # print(f"Test completed in {end_time - start_time:.2f} seconds")
 
     else:
         print("Nenhuma solução encontrada")

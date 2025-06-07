@@ -1242,8 +1242,8 @@ class Nuruomino(Problem):
         return num_empty + heuristic_value
 
 if __name__ == "__main__":
-    import time
-    start_time = time.time()
+    # import time
+    # start_time = time.time()
     board = Board.parse_instance()
 
     # Pré-processamento: resolver regiões de tamanho 4 deterministicamente
@@ -1269,18 +1269,16 @@ if __name__ == "__main__":
 
     #solution = breadth_first_graph_search(problem)
     solution = depth_first_graph_search(problem)
-    #solution = depth_first_tree_search(problem)
+    # #solution = depth_first_tree_search(problem)
     #solution = astar_search(problem, h=problem.h)
-    #solution = greedy_search(problem, h=problem.h)
     
     if solution:
         #print("\n")
-
         solution.state.board._show_board_end_()
         #print("Ultimo state: ", solution.state.id)
-        end_time = time.time()
-        print("\n")
-        print(f"Test completed in {end_time - start_time:.2f} seconds")
+        #end_time = time.time()
+        # print("\n")
+        # print(f"Test completed in {end_time - start_time:.2f} seconds")
 
     else:
         print("Nenhuma solução encontrada")
